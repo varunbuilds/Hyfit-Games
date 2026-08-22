@@ -6,10 +6,14 @@
 import Foundation
 import Observation
 
-enum RacePhase: Equatable, Sendable {
+/// Explicit race stages — prevents an accidental 7th run after Station 06.
+enum RaceStage: Equatable, Sendable {
     case idle
     case ready
-    case active
+    case cognitivePreview
+    /// Index into `definition.physicalSegments` (run/station pairs only).
+    case physical(Int)
+    case cognitiveRecall
     case completed
 }
 
@@ -19,15 +23,17 @@ final class RaceSession {
     let definition: RaceDefinition
     let setup: RaceSetupConfiguration
 
-    private(set) var phase: RacePhase = .idle
-    private(set) var currentStationIndex: Int = 0
+    private(set) var stage: RaceStage = .idle
     private(set) var raceStartDate: Date?
-    private(set) var stationStartDate: Date?
+    private(set) var segmentStartDate: Date?
     private(set) var raceEndDate: Date?
     private(set) var completedStations: [CompletedStationRecord] = []
     private(set) var displayNow: Date = Date()
 
-    /// Injected tracker — swap for GPS implementation later.
+    /// Generated once at race start; never regenerated until a new session.
+    private(set) var cognitiveSequence: [CognitiveColor] = []
+    private(set) var recallAttemptFailed: Bool = false
+
     private(set) var distanceTracker: any DistanceTracking
 
     private var tickTask: Task<Void, Never>?
@@ -40,21 +46,70 @@ final class RaceSession {
         self.definition = definition
         self.setup = setup
         self.distanceTracker = distanceTracker ?? SimulatedDistanceTracker()
-        self.phase = .ready
+        self.stage = .ready
     }
 
     // MARK: - Derived state
 
+    var currentPhysicalSegment: RaceSegment? {
+        guard case .physical(let index) = stage else { return nil }
+        return definition.physicalSegment(at: index)
+    }
+
     var currentStation: RaceStation? {
-        definition.station(at: currentStationIndex)
+        currentPhysicalSegment?.station
     }
 
-    var nextStation: RaceStation? {
-        definition.station(at: currentStationIndex + 1)
+    var nextPhysicalSegment: RaceSegment? {
+        guard case .physical(let index) = stage else {
+            if stage == .cognitivePreview {
+                return definition.physicalSegment(at: 0)
+            }
+            return nil
+        }
+        return definition.physicalSegment(at: index + 1)
     }
 
-    var isOnFinalStation: Bool {
-        currentStationIndex >= definition.stationCount - 1
+    var nextUpTitle: String? {
+        switch stage {
+        case .cognitivePreview:
+            return definition.physicalSegment(at: 0)?.title
+        case .physical(let index):
+            let physical = definition.physicalSegments
+            if index + 1 < physical.count {
+                let next = physical[index + 1]
+                if next.kind == .run {
+                    return "200 m RUN"
+                }
+                return next.title
+            }
+            return "COGNITIVE FINISH"
+        case .cognitiveRecall:
+            return "FINISH LINE"
+        default:
+            return nil
+        }
+    }
+
+    var nextUpSummary: String? {
+        switch stage {
+        case .cognitivePreview:
+            return definition.physicalSegment(at: 0)?.shortDescription
+        case .physical(let index):
+            let physical = definition.physicalSegments
+            if index + 1 < physical.count {
+                let next = physical[index + 1]
+                if next.kind == .run {
+                    return "RUN"
+                }
+                return next.station?.targetSummary ?? next.shortDescription
+            }
+            return "Recall the sequence"
+        case .cognitiveRecall:
+            return "Race complete"
+        default:
+            return nil
+        }
     }
 
     var totalElapsed: TimeInterval {
@@ -63,27 +118,35 @@ final class RaceSession {
         return end.timeIntervalSince(raceStartDate)
     }
 
-    var stationElapsed: TimeInterval {
-        guard phase == .active, let stationStartDate else { return 0 }
-        return displayNow.timeIntervalSince(stationStartDate)
+    var segmentElapsed: TimeInterval {
+        switch stage {
+        case .cognitivePreview, .physical, .cognitiveRecall:
+            guard let segmentStartDate else { return 0 }
+            return displayNow.timeIntervalSince(segmentStartDate)
+        default:
+            return 0
+        }
     }
+
+    /// Alias used by existing station/run views.
+    var stationElapsed: TimeInterval { segmentElapsed }
 
     var performanceSummary: RacePerformanceSummary {
         let total = totalElapsed
         var running: TimeInterval = 0
         var stationWork: TimeInterval = 0
-        var distanceMeters: Double = 0
+        var runningDistanceMeters: Double = 0
 
         for record in completedStations {
             if record.station.movement.countsAsRunning {
                 running += record.duration
+                if let meters = record.distanceCompletedMeters {
+                    runningDistanceMeters += meters
+                } else if let target = record.station.targetDistanceMeters {
+                    runningDistanceMeters += target
+                }
             } else {
                 stationWork += record.duration
-            }
-            if let meters = record.distanceCompletedMeters {
-                distanceMeters += meters
-            } else if let target = record.station.targetDistanceMeters {
-                distanceMeters += target
             }
         }
 
@@ -93,28 +156,40 @@ final class RaceSession {
             runningTime: running,
             stationTime: stationWork,
             transitionTime: transition,
-            totalDistanceMeters: distanceMeters
+            totalDistanceMeters: runningDistanceMeters
         )
     }
 
     // MARK: - Lifecycle
 
     func startRace() {
-        guard phase == .ready || phase == .idle else { return }
+        guard stage == .ready || stage == .idle else { return }
         let now = Date()
+        cognitiveSequence = CognitiveColor.randomSequence(count: 10)
+        recallAttemptFailed = false
         raceStartDate = now
-        stationStartDate = now
+        segmentStartDate = now
         raceEndDate = nil
         completedStations = []
-        currentStationIndex = 0
-        phase = .active
         displayNow = now
-        beginCurrentStationTracking(at: now)
+        stage = .cognitivePreview
+        distanceTracker.stop()
         startTicker()
     }
 
+    func completeCognitivePreview() {
+        guard stage == .cognitivePreview else { return }
+        let now = Date()
+        displayNow = now
+        enterPhysicalSegment(index: 0, at: now)
+    }
+
     func completeCurrentStation() {
-        guard phase == .active, let station = currentStation, let stationStartDate else { return }
+        guard case .physical(let index) = stage,
+              let segment = definition.physicalSegment(at: index),
+              let station = segment.station,
+              let segmentStartDate else { return }
+
         let now = Date()
         displayNow = now
 
@@ -124,9 +199,7 @@ final class RaceSession {
 
         let distanceMeters: Double?
         if station.type == .distance {
-            let value = distanceTracker.currentDistance
-            let unit = distanceTracker.unit
-            distanceMeters = unit.meters(from: value)
+            distanceMeters = distanceTracker.unit.meters(from: distanceTracker.currentDistance)
         } else {
             distanceMeters = nil
         }
@@ -134,59 +207,91 @@ final class RaceSession {
         let record = CompletedStationRecord(
             id: "\(station.id)-\(completedStations.count)",
             station: station,
-            startedAt: stationStartDate,
+            startedAt: segmentStartDate,
             endedAt: now,
             distanceCompletedMeters: distanceMeters
         )
         completedStations.append(record)
         distanceTracker.stop()
 
-        if isOnFinalStation {
-            finishRace(at: now)
+        let physical = definition.physicalSegments
+        let isLastPhysical = index >= physical.count - 1
+
+        if isLastPhysical {
+            // Station 06 → Cognitive Recall (never run 7)
+            stage = .cognitiveRecall
+            self.segmentStartDate = now
+            recallAttemptFailed = false
         } else {
-            advanceToNextStation(at: now)
+            enterPhysicalSegment(index: index + 1, at: now)
         }
+    }
+
+    /// Validates letter input against the preview sequence. Wrong answers retry in place.
+    @discardableResult
+    func submitCognitiveRecall(input: String) -> Bool {
+        guard stage == .cognitiveRecall else { return false }
+        guard let attempt = CognitiveColor.parse(input) else {
+            recallAttemptFailed = true
+            return false
+        }
+
+        if attempt == cognitiveSequence {
+            recallAttemptFailed = false
+            finishRace(at: Date())
+            return true
+        } else {
+            recallAttemptFailed = true
+            return false
+        }
+    }
+
+    func clearRecallFailure() {
+        recallAttemptFailed = false
     }
 
     func resetToIdle() {
         stopTicker()
         distanceTracker.stop()
-        phase = .idle
-        currentStationIndex = 0
+        stage = .idle
         raceStartDate = nil
-        stationStartDate = nil
+        segmentStartDate = nil
         raceEndDate = nil
         completedStations = []
+        cognitiveSequence = []
+        recallAttemptFailed = false
     }
 
     func prepareAgain() {
         stopTicker()
         distanceTracker.stop()
-        phase = .ready
-        currentStationIndex = 0
+        stage = .ready
         raceStartDate = nil
-        stationStartDate = nil
+        segmentStartDate = nil
         raceEndDate = nil
         completedStations = []
+        cognitiveSequence = []
+        recallAttemptFailed = false
     }
 
     // MARK: - Private
 
-    private func advanceToNextStation(at now: Date) {
-        currentStationIndex += 1
-        stationStartDate = now
-        beginCurrentStationTracking(at: now)
+    private func enterPhysicalSegment(index: Int, at now: Date) {
+        stage = .physical(index)
+        segmentStartDate = now
+        beginDistanceTrackingIfNeeded(at: now)
     }
 
     private func finishRace(at now: Date) {
+        displayNow = now
         raceEndDate = now
-        phase = .completed
+        stage = .completed
         stopTicker()
     }
 
-    private func beginCurrentStationTracking(at now: Date) {
-        guard let station = currentStation else { return }
-        guard station.type == .distance,
+    private func beginDistanceTrackingIfNeeded(at now: Date) {
+        guard let station = currentStation,
+              station.type == .distance,
               let distance = station.distance,
               let unit = station.distanceUnit else {
             distanceTracker.stop()
@@ -217,7 +322,8 @@ final class RaceSession {
                 guard let self, !Task.isCancelled else { break }
                 let now = Date()
                 self.displayNow = now
-                if self.phase == .active, self.currentStation?.type == .distance {
+                if case .physical = self.stage,
+                   self.currentStation?.type == .distance {
                     self.distanceTracker.tick(now: now)
                 }
             }

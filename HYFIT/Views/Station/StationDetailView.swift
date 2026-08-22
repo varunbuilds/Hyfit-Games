@@ -8,8 +8,7 @@ import SwiftUI
 /// Reusable station presentation driven entirely by `RaceStation`.
 struct StationDetailView: View {
     let station: RaceStation
-    let stationIndex: Int
-    let totalStations: Int
+    let totalWorkStations: Int
     let totalElapsed: TimeInterval
     let stationElapsed: TimeInterval
     var distanceCurrent: Double? = nil
@@ -27,7 +26,9 @@ struct StationDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         titleBlock
-                        specsRow
+                        if hasAnySpecs {
+                            specsRow
+                        }
                         if station.type == .distance {
                             distanceBlock
                         }
@@ -50,7 +51,7 @@ struct StationDetailView: View {
 
     private var topBar: some View {
         HStack {
-            Text("STATION \(stationIndex + 1) OF \(totalStations)")
+            Text("STATION \(station.formattedWorkStationNumber) OF \(String(format: "%02d", totalWorkStations))")
                 .hyfitLabel(HYFITTheme.lime)
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
@@ -79,48 +80,31 @@ struct StationDetailView: View {
         }
     }
 
+    private var hasAnySpecs: Bool {
+        !station.displayMetrics.isEmpty
+    }
+
     private var specsRow: some View {
         HStack(alignment: .top, spacing: 12) {
-            if let load = station.load, let unit = station.loadUnit {
+            ForEach(station.displayMetrics, id: \.self) { metric in
                 SpecCell(
-                    icon: "dumbbell.fill",
-                    value: "\(Int(load)) \(unit.shortLabel)",
-                    caption: station.loadNote ?? "LOAD"
-                )
-            }
-
-            if let boxHeight = station.boxHeight {
-                SpecCell(
-                    icon: "square.stack.3d.up",
-                    value: boxHeight,
-                    caption: "BOX HEIGHT"
-                )
-            }
-
-            if let reps = station.reps, station.type == .repetitions {
-                SpecCell(
-                    icon: "arrow.counterclockwise",
-                    value: "\(reps)",
-                    caption: "REPS"
-                )
-            }
-
-            if station.type == .distance, let distance = station.distance, let unit = station.distanceUnit {
-                SpecCell(
-                    icon: distanceIcon,
-                    value: TimeFormatting.distanceLabel(value: distance, unit: unit),
-                    caption: "DISTANCE"
-                )
-            }
-
-            if let equipment = station.equipment, station.load == nil {
-                SpecCell(
-                    icon: "wrench.and.screwdriver",
-                    value: equipment.uppercased(),
-                    caption: "EQUIPMENT"
+                    icon: icon(for: metric),
+                    value: metric.value,
+                    caption: metric.label
                 )
             }
         }
+    }
+
+    private func icon(for metric: StationMetric) -> String {
+        let label = metric.label.uppercased()
+        if label.contains("HAND") || label == "LOAD" { return "dumbbell.fill" }
+        if label.contains("BOX") { return "square.stack.3d.up" }
+        if label.contains("REP") || label.contains("SQUAT") || label.contains("FLIP") {
+            return "arrow.counterclockwise"
+        }
+        if label.contains("DISTANCE") { return distanceIcon }
+        return "circle"
     }
 
     @ViewBuilder
@@ -229,9 +213,8 @@ private struct SpecCell: View {
 
 #Preview("Reps") {
     StationDetailView(
-        station: MaleDoublesRaceDefinition.race.stations[1],
-        stationIndex: 1,
-        totalStations: 6,
+        station: MaleDoublesRaceDefinition.race.physicalSegments.first(where: { $0.workStationNumber == 1 })!.station!,
+        totalWorkStations: 6,
         totalElapsed: 112.4,
         stationElapsed: 0,
         onDone: {}
@@ -240,9 +223,8 @@ private struct SpecCell: View {
 
 #Preview("Distance") {
     StationDetailView(
-        station: MaleDoublesRaceDefinition.race.stations[3],
-        stationIndex: 3,
-        totalStations: 6,
+        station: MaleDoublesRaceDefinition.race.physicalSegments.first(where: { $0.workStationNumber == 3 })!.station!,
+        totalWorkStations: 6,
         totalElapsed: 400,
         stationElapsed: 28,
         distanceCurrent: 14,

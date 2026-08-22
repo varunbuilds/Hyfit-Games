@@ -76,7 +76,9 @@ struct ContentView: View {
     }
 
     private func raceAgain() {
+        // Drop previous session so START RACE creates a fresh sequence.
         session?.prepareAgain()
+        session = nil
         var next = NavigationPath()
         next.append(RaceRoute.setup)
         next.append(RaceRoute.format)

@@ -21,13 +21,22 @@ struct RaceDefinition: Identifiable, Codable, Sendable, Hashable {
     let id: String
     let name: String
     let category: RaceCategory
-    let stations: [RaceStation]
+    /// Full official order including cognitive preview/recall and finish.
+    let segments: [RaceSegment]
 
-    var stationCount: Int { stations.count }
+    /// Runs + work stations only (progression between preview and recall).
+    var physicalSegments: [RaceSegment] {
+        segments.filter(\.isPhysical)
+    }
 
-    func station(at index: Int) -> RaceStation? {
-        guard stations.indices.contains(index) else { return nil }
-        return stations[index]
+    var workStationCount: Int {
+        segments.filter { $0.kind == .workStation }.count
+    }
+
+    func physicalSegment(at index: Int) -> RaceSegment? {
+        let physical = physicalSegments
+        guard physical.indices.contains(index) else { return nil }
+        return physical[index]
     }
 }
 

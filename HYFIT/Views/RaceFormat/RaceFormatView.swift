@@ -22,12 +22,11 @@ struct RaceFormatView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(definition.stations.enumerated()), id: \.element.id) { index, station in
-                            StationTimelineRow(
-                                station: station,
+                        ForEach(Array(definition.segments.enumerated()), id: \.element.id) { index, segment in
+                            FormatTimelineRow(
+                                segment: segment,
                                 isFirst: index == 0,
-                                isLast: index == definition.stations.count - 1,
-                                isHighlighted: index == 0
+                                isLast: index == definition.segments.count - 1
                             )
                         }
                     }
@@ -64,34 +63,24 @@ struct RaceFormatView: View {
     }
 }
 
-private struct StationTimelineRow: View {
-    let station: RaceStation
+private struct FormatTimelineRow: View {
+    let segment: RaceSegment
     let isFirst: Bool
     let isLast: Bool
-    let isHighlighted: Bool
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             timelineRail
-
-            Group {
-                if isHighlighted {
-                    highlightedCard
-                } else {
-                    compactRow
-                }
-            }
-            .padding(.bottom, isLast ? 0 : 14)
+            content
+                .padding(.bottom, isLast ? 0 : 12)
         }
     }
 
     private var timelineRail: some View {
         VStack(spacing: 0) {
             Circle()
-                .stroke(isHighlighted ? HYFITTheme.lime : HYFITTheme.borderStrong, lineWidth: 1.5)
-                .background(
-                    Circle().fill(isHighlighted ? HYFITTheme.lime : HYFITTheme.surface)
-                )
+                .stroke(railColor, lineWidth: 1.5)
+                .background(Circle().fill(railFill))
                 .frame(width: 14, height: 14)
                 .padding(.top, 18)
 
@@ -105,48 +94,112 @@ private struct StationTimelineRow: View {
         .frame(width: 14)
     }
 
-    private var highlightedCard: some View {
-        HYFITBorderedCard(accentBorder: true, padding: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text("\(station.stationNumber)")
-                        .font(HYFITTypography.label)
-                        .foregroundStyle(HYFITTheme.lime)
-                    Text(station.name)
-                        .font(HYFITTypography.heading)
-                        .foregroundStyle(HYFITTheme.primaryText)
-                        .textCase(.uppercase)
+    private var railColor: Color {
+        switch segment.kind {
+        case .cognitivePreview, .cognitiveRecall, .finish:
+            return HYFITTheme.lime
+        default:
+            return HYFITTheme.borderStrong
+        }
+    }
+
+    private var railFill: Color {
+        switch segment.kind {
+        case .cognitivePreview, .cognitiveRecall, .finish:
+            return HYFITTheme.lime.opacity(0.25)
+        default:
+            return HYFITTheme.surface
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch segment.kind {
+        case .run:
+            runRow
+        case .workStation:
+            stationCard
+        case .cognitivePreview, .cognitiveRecall, .finish:
+            cognitiveCard
+        }
+    }
+
+    /// Unnumbered: "200 m" + "RUN" only.
+    private var runRow: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("200 m")
+                .font(HYFITTypography.heading)
+                .foregroundStyle(HYFITTheme.primaryText)
+            Text("RUN")
+                .hyfitLabel(HYFITTheme.lime)
+        }
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Same card chrome for every physical station — no selected/active treatment.
+    private var stationCard: some View {
+        HYFITBorderedCard(accentBorder: false, padding: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(segment.badge)
+                    .hyfitLabel(HYFITTheme.lime)
+
+                Text(segment.title)
+                    .font(HYFITTypography.heading)
+                    .foregroundStyle(HYFITTheme.primaryText)
+                    .textCase(.uppercase)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !segment.shortDescription.isEmpty {
+                    Text(segment.shortDescription)
+                        .font(HYFITTypography.caption)
+                        .foregroundStyle(HYFITTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Text(station.shortDescription)
-                    .font(HYFITTypography.caption)
-                    .foregroundStyle(HYFITTheme.secondaryText)
-
-                Text(station.type == .distance ? "DISTANCE" : "REPETITIONS")
-                    .hyfitLabel(HYFITTheme.tertiaryText)
-                    .padding(.top, 2)
+                if let metrics = segment.station?.displayMetrics, !metrics.isEmpty {
+                    HStack(alignment: .top, spacing: 16) {
+                        ForEach(metrics, id: \.self) { metric in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(metric.value)
+                                    .font(HYFITTypography.bodyEmphasized)
+                                    .foregroundStyle(HYFITTheme.primaryText)
+                                Text(metric.label)
+                                    .hyfitLabel(HYFITTheme.tertiaryText)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.top, 4)
+                }
             }
         }
     }
 
-    private var compactRow: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("\(station.stationNumber)")
-                    .font(HYFITTypography.label)
-                    .foregroundStyle(HYFITTheme.tertiaryText)
-                Text(station.name)
-                    .font(HYFITTypography.bodyEmphasized)
+    private var cognitiveCard: some View {
+        HYFITBorderedCard(accentBorder: false, padding: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: segment.kind == .finish ? "flag.checkered" : "brain.head.profile")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(HYFITTheme.lime)
+                    Text(segment.badge)
+                        .hyfitLabel(HYFITTheme.lime)
+                }
+
+                Text(segment.title)
+                    .font(HYFITTypography.heading)
                     .foregroundStyle(HYFITTheme.primaryText)
                     .textCase(.uppercase)
+
+                if !segment.shortDescription.isEmpty {
+                    Text(segment.shortDescription)
+                        .font(HYFITTypography.caption)
+                        .foregroundStyle(HYFITTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            Text(station.shortDescription)
-                .font(HYFITTypography.caption)
-                .foregroundStyle(HYFITTheme.secondaryText)
-                .padding(.leading, 22)
         }
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
