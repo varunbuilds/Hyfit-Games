@@ -23,6 +23,11 @@ struct RacePerformanceSummary: Hashable, Sendable {
     let stationTime: TimeInterval
     let transitionTime: TimeInterval
     let totalDistanceMeters: Double
+    let rawFinishTime: TimeInterval
+    let cognitivePenaltySeconds: TimeInterval
+    let cognitivePenaltyType: CognitivePenaltyType?
+    let adjustedFinishTime: TimeInterval
+    let correctRecallPositions: Int?
 
     var totalDistanceKilometers: Double {
         totalDistanceMeters / 1000.0

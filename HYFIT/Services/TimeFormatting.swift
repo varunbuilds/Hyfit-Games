@@ -38,4 +38,14 @@ enum TimeFormatting {
     static func kilometersLabel(_ meters: Double) -> String {
         String(format: "%.2f KM", meters / 1000.0)
     }
+
+    /// Formats signed cognitive penalty: −00:30 / +00:30 / 00:00 / +01:00
+    static func signedPenaltyClock(_ interval: TimeInterval) -> String {
+        if interval == 0 { return "00:00" }
+        let sign = interval < 0 ? "−" : "+"
+        let totalSeconds = Int(abs(interval).rounded())
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%@%02d:%02d", sign, minutes, seconds)
+    }
 }

@@ -23,6 +23,7 @@ struct RaceCompletionView: View {
                     VStack(spacing: 28) {
                         header
                         trophyBlock
+                        cognitivePenaltyBlock
                         summaryGrid
                     }
                     .padding(.horizontal, HYFITTheme.horizontalPadding)
@@ -49,7 +50,7 @@ struct RaceCompletionView: View {
             Text("RACE COMPLETE")
                 .hyfitLabel(HYFITTheme.lime)
 
-            Text(TimeFormatting.raceClock(summary.totalTime))
+            Text(TimeFormatting.raceClock(summary.adjustedFinishTime))
                 .font(HYFITTypography.metricHuge)
                 .foregroundStyle(HYFITTheme.primaryText)
                 .monospacedDigit()
@@ -73,6 +74,60 @@ struct RaceCompletionView: View {
                 .foregroundStyle(HYFITTheme.secondaryText)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
+        }
+    }
+
+    private var cognitivePenaltyBlock: some View {
+        VStack(spacing: 12) {
+            penaltyRow(label: "RAW TIME", value: TimeFormatting.paddedRaceClock(summary.rawFinishTime))
+            penaltyRow(
+                label: "COGNITIVE RECALL",
+                value: summary.cognitivePenaltyType?.displayLabel ?? "—"
+            )
+            penaltyRow(
+                label: "PENALTY",
+                value: TimeFormatting.signedPenaltyClock(summary.cognitivePenaltySeconds),
+                valueColor: penaltyValueColor
+            )
+            penaltyRow(
+                label: "FINAL TIME",
+                value: TimeFormatting.paddedRaceClock(summary.adjustedFinishTime),
+                valueColor: HYFITTheme.lime
+            )
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(HYFITTheme.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
+                .stroke(HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
+    }
+
+    private var penaltyValueColor: Color {
+        let seconds = summary.cognitivePenaltySeconds
+        if seconds < 0 { return HYFITTheme.lime }
+        if seconds > 0 { return HYFITTheme.danger }
+        return HYFITTheme.primaryText
+    }
+
+    private func penaltyRow(
+        label: String,
+        value: String,
+        valueColor: Color = HYFITTheme.primaryText
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .hyfitLabel(HYFITTheme.tertiaryText)
+            Spacer(minLength: 12)
+            Text(value)
+                .font(HYFITTypography.heading)
+                .foregroundStyle(valueColor)
+                .monospacedDigit()
+                .multilineTextAlignment(.trailing)
+                .minimumScaleFactor(0.7)
+                .lineLimit(2)
         }
     }
 

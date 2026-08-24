@@ -26,20 +26,27 @@ enum CognitiveColor: String, CaseIterable, Codable, Sendable, Hashable {
         (0..<count).map { _ in allCases.randomElement()! }
     }
 
-    static func parse(_ input: String) -> [CognitiveColor]? {
+    /// Parses 0...10 Y/R/G/B letters. Spaces ignored. Invalid characters → nil.
+    static func parseSubmitted(_ input: String) -> [CognitiveColor]? {
         let letters = input
             .uppercased()
             .filter { !$0.isWhitespace }
             .map(String.init)
 
-        guard letters.count == 10 else { return nil }
+        guard letters.count <= 10 else { return nil }
 
         var colors: [CognitiveColor] = []
-        colors.reserveCapacity(10)
+        colors.reserveCapacity(letters.count)
         for letter in letters {
             guard let color = CognitiveColor(rawValue: letter) else { return nil }
             colors.append(color)
         }
+        return colors
+    }
+
+    /// Legacy exact-10 parse used where a full sequence is required.
+    static func parse(_ input: String) -> [CognitiveColor]? {
+        guard let colors = parseSubmitted(input), colors.count == 10 else { return nil }
         return colors
     }
 }

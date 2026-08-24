@@ -19,7 +19,7 @@ struct CognitiveRecallView: View {
     }
 
     private var canSubmit: Bool {
-        normalizedLetters.count == 10
+        !session.hasSubmittedCognitiveRecall
     }
 
     var body: some View {
@@ -60,16 +60,14 @@ struct CognitiveRecallView: View {
                         .autocorrectionDisabled()
                         .keyboardType(.asciiCapable)
                         .focused($isFocused)
+                        .disabled(session.hasSubmittedCognitiveRecall)
                         .font(HYFITTypography.heading)
                         .foregroundStyle(HYFITTheme.primaryText)
                         .padding(14)
                         .background(HYFITTheme.surface)
                         .overlay(
                             RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
-                                .stroke(
-                                    session.recallAttemptFailed ? HYFITTheme.danger : HYFITTheme.border,
-                                    lineWidth: HYFITTheme.borderWidth
-                                )
+                                .stroke(HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
                         )
                         .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
                         .onChange(of: inputText) { _, newValue in
@@ -80,17 +78,7 @@ struct CognitiveRecallView: View {
                             if limited != newValue {
                                 inputText = limited
                             }
-                            if session.recallAttemptFailed {
-                                session.clearRecallFailure()
-                            }
                         }
-
-                    if session.recallAttemptFailed {
-                        Text("INCORRECT SEQUENCE — TRY AGAIN")
-                            .font(HYFITTypography.label)
-                            .foregroundStyle(HYFITTheme.danger)
-                            .tracking(1)
-                    }
                 }
                 .padding(.horizontal, HYFITTheme.horizontalPadding)
 
@@ -132,10 +120,7 @@ struct CognitiveRecallView: View {
 
     private func submit() {
         guard canSubmit else { return }
-        let success = session.submitCognitiveRecall(input: String(normalizedLetters))
-        if !success {
-            // Keep typed attempt visible so the athlete can edit and retry.
-        }
+        _ = session.submitCognitiveRecall(input: String(normalizedLetters))
     }
 }
 

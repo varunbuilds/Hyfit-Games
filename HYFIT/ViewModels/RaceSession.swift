@@ -33,6 +33,9 @@ final class RaceSession {
     /// Generated once at race start; never regenerated until a new session.
     private(set) var cognitiveSequence: [CognitiveColor] = []
     private(set) var recallAttemptFailed: Bool = false
+    /// Persisted after first Submit — never recalculated on re-render.
+    private(set) var cognitivePenaltyResult: CognitiveRecallPenaltyResult?
+    private(set) var hasSubmittedCognitiveRecall: Bool = false
 
     private(set) var distanceTracker: any DistanceTracking
 
@@ -132,7 +135,7 @@ final class RaceSession {
     var stationElapsed: TimeInterval { segmentElapsed }
 
     var performanceSummary: RacePerformanceSummary {
-        let total = totalElapsed
+        let rawTotal = totalElapsed
         var running: TimeInterval = 0
         var stationWork: TimeInterval = 0
         var runningDistanceMeters: Double = 0
@@ -150,13 +153,19 @@ final class RaceSession {
             }
         }
 
-        let transition = max(0, total - running - stationWork)
+        let transition = max(0, rawTotal - running - stationWork)
+        let penalty = cognitivePenaltyResult
         return RacePerformanceSummary(
-            totalTime: total,
+            totalTime: rawTotal,
             runningTime: running,
             stationTime: stationWork,
             transitionTime: transition,
-            totalDistanceMeters: runningDistanceMeters
+            totalDistanceMeters: runningDistanceMeters,
+            rawFinishTime: penalty?.rawFinishTime ?? rawTotal,
+            cognitivePenaltySeconds: penalty?.penaltySeconds ?? 0,
+            cognitivePenaltyType: penalty?.penaltyType,
+            adjustedFinishTime: penalty?.adjustedFinishTime ?? rawTotal,
+            correctRecallPositions: penalty?.correctPositions
         )
     }
 
@@ -167,6 +176,8 @@ final class RaceSession {
         let now = Date()
         cognitiveSequence = CognitiveColor.randomSequence(count: 10)
         recallAttemptFailed = false
+        cognitivePenaltyResult = nil
+        hasSubmittedCognitiveRecall = false
         raceStartDate = now
         segmentStartDate = now
         raceEndDate = nil
@@ -227,23 +238,38 @@ final class RaceSession {
         }
     }
 
-    /// Validates letter input against the preview sequence. Wrong answers retry in place.
+    /// Applies cognitive penalty once on Submit, then finishes the race.
+    /// Empty submission is treated as refusal (+60s). Partial non-empty is scored by position.
     @discardableResult
     func submitCognitiveRecall(input: String) -> Bool {
         guard stage == .cognitiveRecall else { return false }
-        guard let attempt = CognitiveColor.parse(input) else {
+        // Prevent duplicate penalty application.
+        if hasSubmittedCognitiveRecall {
+            return true
+        }
+
+        guard let submitted = CognitiveColor.parseSubmitted(input) else {
             recallAttemptFailed = true
             return false
         }
 
-        if attempt == cognitiveSequence {
-            recallAttemptFailed = false
-            finishRace(at: Date())
-            return true
-        } else {
-            recallAttemptFailed = true
-            return false
-        }
+        let now = Date()
+        displayNow = now
+        let rawFinishTime = totalElapsed
+        let refused = submitted.isEmpty
+
+        let result = CognitiveRecallPenalty.calculate(
+            original: cognitiveSequence,
+            submitted: submitted,
+            rawFinishTime: rawFinishTime,
+            refused: refused
+        )
+
+        cognitivePenaltyResult = result
+        hasSubmittedCognitiveRecall = true
+        recallAttemptFailed = false
+        finishRace(at: now)
+        return true
     }
 
     func clearRecallFailure() {
@@ -260,6 +286,8 @@ final class RaceSession {
         completedStations = []
         cognitiveSequence = []
         recallAttemptFailed = false
+        cognitivePenaltyResult = nil
+        hasSubmittedCognitiveRecall = false
     }
 
     func prepareAgain() {
@@ -272,6 +300,8 @@ final class RaceSession {
         completedStations = []
         cognitiveSequence = []
         recallAttemptFailed = false
+        cognitivePenaltyResult = nil
+        hasSubmittedCognitiveRecall = false
     }
 
     // MARK: - Private
