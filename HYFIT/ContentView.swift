@@ -9,6 +9,8 @@ struct ContentView: View {
     @State private var path = NavigationPath()
     @State private var setup = RaceSetupConfiguration.maleDoublesPlaceholder
     @State private var session: RaceSession?
+    /// Set together with `session`; navigation runs only after state is committed.
+    @State private var pendingActiveRaceNavigation = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -21,6 +23,13 @@ struct ContentView: View {
         }
         .preferredColorScheme(.dark)
         .tint(HYFITTheme.lime)
+        .onChange(of: pendingActiveRaceNavigation) { _, shouldNavigate in
+            guard shouldNavigate else { return }
+            // Session must already be committed in this same render pass.
+            guard session != nil else { return }
+            pendingActiveRaceNavigation = false
+            path.append(RaceRoute.activeRace)
+        }
     }
 
     @ViewBuilder
@@ -44,7 +53,8 @@ struct ContentView: View {
                     path.append(RaceRoute.completion)
                 }
             } else {
-                Color.clear.onAppear { path = NavigationPath() }
+                // Never wipe the stack — that caused first-launch bounce-to-home.
+                RaceRouteLoadingView()
             }
         case .completion:
             if let session {
@@ -54,31 +64,34 @@ struct ContentView: View {
                     onRaceAgain: raceAgain
                 )
             } else {
-                Color.clear.onAppear { path = NavigationPath() }
+                RaceRouteLoadingView()
             }
         }
     }
 
+    /// Creates and starts the session first; navigation is deferred to `onChange`
+    /// so the active-race destination never mounts with a nil session.
     private func startActiveRace() {
         let raceSession = RaceSession(
             definition: RaceCatalog.definition(for: setup.category),
             setup: setup
         )
-        session = raceSession
         raceSession.startRace()
-        path.append(RaceRoute.activeRace)
+        session = raceSession
+        pendingActiveRaceNavigation = true
     }
 
     private func finishAndGoHome() {
         session?.resetToIdle()
         session = nil
+        pendingActiveRaceNavigation = false
         path = NavigationPath()
     }
 
     private func raceAgain() {
-        // Drop previous session so START RACE creates a fresh sequence.
         session?.prepareAgain()
         session = nil
+        pendingActiveRaceNavigation = false
         var next = NavigationPath()
         next.append(RaceRoute.setup)
         next.append(RaceRoute.format)
@@ -88,6 +101,18 @@ struct ContentView: View {
     private func pop() {
         guard !path.isEmpty else { return }
         path.removeLast()
+    }
+}
+
+/// Intentional placeholder if a race route is ever reached without session state.
+private struct RaceRouteLoadingView: View {
+    var body: some View {
+        ZStack {
+            HYFITTheme.background.ignoresSafeArea()
+            ProgressView()
+                .tint(HYFITTheme.lime)
+        }
+        .navigationBarBackButtonHidden(true)
     }
 }
 
