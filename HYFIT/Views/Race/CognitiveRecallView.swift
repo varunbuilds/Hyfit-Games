@@ -7,19 +7,16 @@ import SwiftUI
 
 struct CognitiveRecallView: View {
     @Bindable var session: RaceSession
-    @State private var inputText: String = ""
-    @FocusState private var isFocused: Bool
+    @State private var entered: [CognitiveColor] = []
 
-    private var normalizedLetters: [Character] {
-        Array(
-            inputText
-                .uppercased()
-                .filter { "YRGB".contains($0) }
-        )
-    }
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 5)
 
     private var canSubmit: Bool {
         !session.hasSubmittedCognitiveRecall
+    }
+
+    private var canAppend: Bool {
+        canSubmit && entered.count < 10
     }
 
     var body: some View {
@@ -27,14 +24,9 @@ struct CognitiveRecallView: View {
             HYFITTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                Text("RECALL")
-                    .hyfitLabel(HYFITTheme.lime)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
-
                 Spacer(minLength: 16)
 
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 18) {
                     Text("COGNITIVE FINISH")
                         .font(HYFITTypography.title)
                         .foregroundStyle(HYFITTheme.primaryText)
@@ -44,78 +36,124 @@ struct CognitiveRecallView: View {
                         .font(HYFITTypography.body)
                         .foregroundStyle(HYFITTheme.secondaryText)
 
-                    letterSlots
-                        .padding(.top, 4)
-
-                    Text("ALLOWED: Y / R / G / B")
-                        .hyfitLabel(HYFITTheme.tertiaryText)
-
-                    TextField("", text: $inputText)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                        .keyboardType(.asciiCapable)
-                        .focused($isFocused)
-                        .disabled(session.hasSubmittedCognitiveRecall)
-                        .font(HYFITTypography.heading)
-                        .foregroundStyle(HYFITTheme.primaryText)
-                        .padding(14)
-                        .background(HYFITTheme.surface)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
-                                .stroke(HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
-                        .onChange(of: inputText) { _, newValue in
-                            let filtered = newValue
-                                .uppercased()
-                                .filter { "YRGB".contains($0) }
-                            let limited = String(filtered.prefix(10))
-                            if limited != newValue {
-                                inputText = limited
-                            }
+                    LazyVGrid(columns: columns, spacing: 10) {
+                        ForEach(0..<10, id: \.self) { index in
+                            sequenceBlock(at: index)
                         }
+                    }
+                    .padding(.top, 8)
+
+                    Text("Y YELLOW  ·  R RED  ·  G GREEN  ·  B BLUE")
+                        .hyfitLabel(HYFITTheme.tertiaryText)
+                        .padding(.top, 4)
                 }
                 .padding(.horizontal, HYFITTheme.horizontalPadding)
 
-                Spacer()
+                Spacer(minLength: 12)
 
-                HYFITPrimaryButton(
-                    title: "SUBMIT",
-                    isEnabled: canSubmit,
-                    action: submit
-                )
+                colorInputPad
+                    .padding(.horizontal, HYFITTheme.horizontalPadding)
+                    .padding(.bottom, 14)
+
+                HStack(spacing: 12) {
+                    HYFITPrimaryButton(
+                        title: "SUBMIT",
+                        isEnabled: canSubmit,
+                        action: submit
+                    )
+
+                    backspaceButton
+                }
                 .padding(.horizontal, HYFITTheme.horizontalPadding)
                 .padding(.bottom, 24)
             }
         }
-        .onAppear {
-            isFocused = true
+    }
+
+    @ViewBuilder
+    private func sequenceBlock(at index: Int) -> some View {
+        if index < entered.count {
+            let color = entered[index]
+            Text(color.letter)
+                .font(HYFITTypography.heading)
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .frame(height: 64)
+                .background(color.displayColor)
+                .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadiusSmall, style: .continuous))
+        } else {
+            Text("")
+                .font(HYFITTypography.heading)
+                .frame(maxWidth: .infinity)
+                .frame(height: 64)
+                .background(HYFITTheme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: HYFITTheme.cornerRadiusSmall, style: .continuous)
+                        .stroke(HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadiusSmall, style: .continuous))
         }
     }
 
-    private var letterSlots: some View {
-        HStack(spacing: 6) {
-            ForEach(0..<10, id: \.self) { index in
-                let letter = index < normalizedLetters.count
-                    ? String(normalizedLetters[index])
-                    : ""
-                Text(letter.isEmpty ? "_" : letter)
-                    .font(HYFITTypography.heading)
-                    .foregroundStyle(letter.isEmpty ? HYFITTheme.tertiaryText : HYFITTheme.lime)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(HYFITTheme.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(HYFITTheme.border, lineWidth: 1)
-                    )
+    private var colorInputPad: some View {
+        HStack(spacing: 10) {
+            ForEach(CognitiveColor.allCases, id: \.self) { color in
+                Button {
+                    append(color)
+                } label: {
+                    Text(color.letter)
+                        .font(HYFITTypography.heading)
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 64)
+                        .background(color.displayColor.opacity(canAppend ? 1 : 0.35))
+                        .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadiusSmall, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!canAppend)
+                .accessibilityLabel(color.letter)
             }
         }
     }
 
+    private var canDelete: Bool {
+        canSubmit && !entered.isEmpty
+    }
+
+    private var backspaceButton: some View {
+        Button {
+            deleteLast()
+        } label: {
+            Image(systemName: "delete.backward")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(canDelete ? HYFITTheme.primaryText : HYFITTheme.tertiaryText)
+                .frame(width: 58, height: 58)
+                .background(HYFITTheme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
+                        .stroke(HYFITTheme.borderStrong, lineWidth: HYFITTheme.borderWidth)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!canDelete)
+        .accessibilityLabel("Delete last color")
+    }
+
+    private func append(_ color: CognitiveColor) {
+        guard canAppend else { return }
+        entered.append(color)
+    }
+
+    private func deleteLast() {
+        guard canDelete else { return }
+        entered.removeLast()
+    }
+
     private func submit() {
         guard canSubmit else { return }
-        _ = session.submitCognitiveRecall(input: String(normalizedLetters))
+        let input = entered.map(\.letter).joined()
+        _ = session.submitCognitiveRecall(input: input)
     }
 }
 
