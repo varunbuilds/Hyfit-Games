@@ -27,15 +27,10 @@ struct CognitiveRecallView: View {
             HYFITTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                VStack(spacing: 8) {
-                    Text("RECALL")
-                        .hyfitLabel(HYFITTheme.lime)
-                    Text(TimeFormatting.raceClock(session.totalElapsed))
-                        .font(HYFITTypography.heading)
-                        .foregroundStyle(HYFITTheme.primaryText)
-                        .monospacedDigit()
-                }
-                .padding(.top, 16)
+                Text("RECALL")
+                    .hyfitLabel(HYFITTheme.lime)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
 
                 Spacer(minLength: 16)
 

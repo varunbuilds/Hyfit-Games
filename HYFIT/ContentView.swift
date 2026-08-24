@@ -49,9 +49,13 @@ struct ContentView: View {
             )
         case .activeRace:
             if let session {
-                RaceView(session: session) {
-                    path.append(RaceRoute.completion)
-                }
+                RaceView(
+                    session: session,
+                    onRaceCompleted: {
+                        path.append(RaceRoute.completion)
+                    },
+                    onAbortRace: abortActiveRace
+                )
             } else {
                 // Never wipe the stack — that caused first-launch bounce-to-home.
                 RaceRouteLoadingView()
@@ -86,6 +90,17 @@ struct ContentView: View {
         session = nil
         pendingActiveRaceNavigation = false
         path = NavigationPath()
+    }
+
+    /// Aborts an in-progress race without completion or penalty.
+    private func abortActiveRace() {
+        session?.resetToIdle()
+        session = nil
+        pendingActiveRaceNavigation = false
+        var next = NavigationPath()
+        next.append(RaceRoute.setup)
+        next.append(RaceRoute.format)
+        path = next
     }
 
     private func raceAgain() {

@@ -17,16 +17,6 @@ struct CognitivePreviewView: View {
             HYFITTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                VStack(spacing: 8) {
-                    Text("START")
-                        .hyfitLabel(HYFITTheme.lime)
-                    Text(TimeFormatting.raceClock(totalElapsed))
-                        .font(HYFITTypography.heading)
-                        .foregroundStyle(HYFITTheme.primaryText)
-                        .monospacedDigit()
-                }
-                .padding(.top, 16)
-
                 Spacer(minLength: 20)
 
                 VStack(alignment: .leading, spacing: 18) {

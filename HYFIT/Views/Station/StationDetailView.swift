@@ -54,14 +54,6 @@ struct StationDetailView: View {
             Text("STATION \(station.formattedWorkStationNumber) OF \(String(format: "%02d", totalWorkStations))")
                 .hyfitLabel(HYFITTheme.lime)
             Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("TOTAL")
-                    .hyfitLabel(HYFITTheme.tertiaryText)
-                Text(TimeFormatting.paddedRaceClock(totalElapsed))
-                    .font(HYFITTypography.heading)
-                    .foregroundStyle(HYFITTheme.primaryText)
-                    .monospacedDigit()
-            }
         }
     }
 

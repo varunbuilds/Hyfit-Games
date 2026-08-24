@@ -9,8 +9,91 @@ import SwiftUI
 struct RaceView: View {
     @Bindable var session: RaceSession
     let onRaceCompleted: () -> Void
+    let onAbortRace: () -> Void
+
+    @State private var showExitConfirmation = false
+    @State private var isAborting = false
+
+    private var isActiveRace: Bool {
+        switch session.stage {
+        case .cognitivePreview, .physical, .cognitiveRecall:
+            true
+        case .completed, .idle, .ready:
+            false
+        }
+    }
 
     var body: some View {
+        Group {
+            if isActiveRace {
+                VStack(spacing: 0) {
+                    raceHeader
+                        .padding(.horizontal, HYFITTheme.horizontalPadding)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+
+                    stageContent
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .background(HYFITTheme.background.ignoresSafeArea())
+            } else {
+                stageContent
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .disableInteractivePopGesture()
+        .alert("Exit Race?", isPresented: $showExitConfirmation) {
+            Button("Continue Race", role: .cancel) {}
+            Button("Exit Race", role: .destructive, action: confirmAbort)
+        } message: {
+            Text("Your current race will be lost.")
+        }
+        .onChange(of: session.stage) { _, newStage in
+            if newStage == .completed {
+                showExitConfirmation = false
+                onRaceCompleted()
+            }
+        }
+    }
+
+    /// Shared chrome — same position for every active stage.
+    private var raceHeader: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 16) {
+                Text("TOTAL TIME")
+                    .hyfitLabel(HYFITTheme.secondaryText)
+
+                Spacer(minLength: 12)
+
+                exitButton
+            }
+
+            Text(TimeFormatting.raceClock(session.totalElapsed))
+                .font(HYFITTypography.timerLarge)
+                .foregroundStyle(HYFITTheme.primaryText)
+                .monospacedDigit()
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var exitButton: some View {
+        Button {
+            guard !isAborting else { return }
+            showExitConfirmation = true
+        } label: {
+            Text("EXIT")
+                .hyfitLabel(HYFITTheme.secondaryText)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isAborting)
+        .accessibilityLabel("Exit Race")
+    }
+
+    @ViewBuilder
+    private var stageContent: some View {
         Group {
             switch session.stage {
             case .cognitivePreview:
@@ -44,11 +127,6 @@ struct RaceView: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: stageAnimationKey)
-        .onChange(of: session.stage) { _, newStage in
-            if newStage == .completed {
-                onRaceCompleted()
-            }
-        }
     }
 
     private var stageAnimationKey: String {
@@ -90,6 +168,14 @@ struct RaceView: View {
             session.completeCurrentStation()
         }
     }
+
+    private func confirmAbort() {
+        guard !isAborting else { return }
+        guard isActiveRace else { return }
+        isAborting = true
+        showExitConfirmation = false
+        onAbortRace()
+    }
 }
 
 struct DistanceRaceStationView: View {
@@ -104,9 +190,6 @@ struct DistanceRaceStationView: View {
             HYFITTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                totalTimeHeader
-                    .padding(.top, 12)
-
                 Spacer(minLength: 12)
 
                 VStack(spacing: 10) {
@@ -156,17 +239,6 @@ struct DistanceRaceStationView: View {
         }
     }
 
-    private var totalTimeHeader: some View {
-        VStack(spacing: 6) {
-            Text("TOTAL TIME")
-                .hyfitLabel(HYFITTheme.secondaryText)
-            Text(TimeFormatting.raceClock(session.totalElapsed))
-                .font(HYFITTypography.timerLarge)
-                .foregroundStyle(HYFITTheme.primaryText)
-                .monospacedDigit()
-        }
-    }
-
     private var upNextCard: some View {
         HYFITBorderedCard(padding: 14) {
             VStack(alignment: .leading, spacing: 6) {
@@ -197,6 +269,7 @@ struct DistanceRaceStationView: View {
             session.startRace()
             return session
         }(),
-        onRaceCompleted: {}
+        onRaceCompleted: {},
+        onAbortRace: {}
     )
 }
