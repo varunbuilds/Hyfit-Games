@@ -61,7 +61,7 @@ final class RaceResultStore {
 
     func fetchAll() -> [RaceResult] {
         do {
-            var descriptor = FetchDescriptor<PersistedRaceResult>(
+            let descriptor = FetchDescriptor<PersistedRaceResult>(
                 sortBy: [SortDescriptor(\.completedAt, order: .reverse)]
             )
             let rows = try modelContext.fetch(descriptor)

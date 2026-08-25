@@ -25,6 +25,7 @@ struct RaceSetupView: View {
                         categoryField
                         teamSection
                         modeField
+                        distanceModeSection
                     }
                     .padding(.horizontal, HYFITTheme.horizontalPadding)
                     .padding(.bottom, 120)
@@ -99,6 +100,47 @@ struct RaceSetupView: View {
             showsChevron: true
         )
         .padding(.top, 8)
+    }
+
+    private var distanceModeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("DISTANCE MODE")
+                .hyfitLabel(HYFITTheme.tertiaryText)
+                .padding(.leading, 4)
+
+            HStack(spacing: 10) {
+                ForEach(DistanceTrackingMode.allCases, id: \.self) { mode in
+                    distanceModeButton(mode)
+                }
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private func distanceModeButton(_ mode: DistanceTrackingMode) -> some View {
+        let selected = configuration.distanceTrackingMode == mode
+        return Button {
+            configuration.distanceTrackingMode = mode
+        } label: {
+            Text(mode.displayName)
+                .font(HYFITTypography.heading)
+                .foregroundStyle(selected ? HYFITTheme.onLime : HYFITTheme.primaryText)
+                .textCase(.uppercase)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(selected ? HYFITTheme.lime : HYFITTheme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
+                        .stroke(
+                            selected ? HYFITTheme.lime : HYFITTheme.border,
+                            lineWidth: HYFITTheme.borderWidth
+                        )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Distance mode \(mode.displayName)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 

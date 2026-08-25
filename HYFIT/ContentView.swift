@@ -100,7 +100,8 @@ struct ContentView: View {
     private func startActiveRace() {
         let raceSession = RaceSession(
             definition: RaceCatalog.definition(for: setup.category),
-            setup: setup
+            setup: setup,
+            distanceTracker: DistanceTrackerFactory.make(setup.distanceTrackingMode)
         )
         raceSession.startRace()
         session = raceSession

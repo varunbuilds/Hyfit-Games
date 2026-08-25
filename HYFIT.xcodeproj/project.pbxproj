@@ -400,6 +400,8 @@
 				DEVELOPMENT_TEAM = 5P7RHX83Q8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "HYFIT uses your location to measure run and carry distance during a race.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "HYFIT uses motion data to tell real movement from GPS drift so a stationary phone does not add fake race distance.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -432,6 +434,8 @@
 				DEVELOPMENT_TEAM = 5P7RHX83Q8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "HYFIT uses your location to measure run and carry distance during a race.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "HYFIT uses motion data to tell real movement from GPS drift so a stationary phone does not add fake race distance.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

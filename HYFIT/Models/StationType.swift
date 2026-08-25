@@ -5,12 +5,12 @@
 
 import Foundation
 
-enum StationType: String, Codable, Sendable, Hashable {
+nonisolated enum StationType: String, Codable, Sendable, Hashable {
     case distance
     case repetitions
 }
 
-enum DistanceUnit: String, Codable, Sendable, Hashable {
+nonisolated enum DistanceUnit: String, Codable, Sendable, Hashable {
     case meters
     case kilometers
 
@@ -29,7 +29,7 @@ enum DistanceUnit: String, Codable, Sendable, Hashable {
     }
 }
 
-enum LoadUnit: String, Codable, Sendable, Hashable {
+nonisolated enum LoadUnit: String, Codable, Sendable, Hashable {
     case kilograms
     case pounds
 
@@ -42,7 +42,7 @@ enum LoadUnit: String, Codable, Sendable, Hashable {
 }
 
 /// Broad movement class for analytics (running vs station work).
-enum StationMovement: String, Codable, Sendable, Hashable {
+nonisolated enum StationMovement: String, Codable, Sendable, Hashable {
     case run
     case carry
     case crawl

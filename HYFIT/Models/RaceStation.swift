@@ -5,12 +5,12 @@
 
 import Foundation
 
-struct StationMetric: Hashable, Codable, Sendable {
+nonisolated struct StationMetric: Hashable, Codable, Sendable {
     let value: String
     let label: String
 }
 
-struct RaceStation: Identifiable, Codable, Sendable, Hashable {
+nonisolated struct RaceStation: Identifiable, Codable, Sendable, Hashable {
     let id: String
     /// Work station number 1...6, or run index for runs.
     let stationNumber: Int

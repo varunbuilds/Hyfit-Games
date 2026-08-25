@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum CognitivePenaltyType: String, Sendable, Hashable, Codable {
+nonisolated enum CognitivePenaltyType: String, Sendable, Hashable, Codable {
     case fullRecall = "FULL_RECALL"
     case noPenalty = "NO_PENALTY"
     case incorrectRecall = "INCORRECT_RECALL"

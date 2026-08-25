@@ -6,7 +6,7 @@
 import Foundation
 
 /// Abstraction for distance progress during a station.
-/// A future CoreLocation / Watch tracker can conform to this protocol.
+/// Implementations: `SimulatedDistanceTracker` (default), `GPSDistanceTracker` (opt-in via factory).
 protocol DistanceTracking: AnyObject {
     var currentDistance: Double { get }
     var targetDistance: Double { get }

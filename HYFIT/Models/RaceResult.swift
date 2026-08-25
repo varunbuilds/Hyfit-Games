@@ -7,7 +7,7 @@ import Foundation
 
 /// Immutable snapshot of a successfully completed race.
 /// Built once at Cognitive Recall submit — not a live timing system.
-struct RaceResult: Identifiable, Hashable, Sendable, Codable {
+nonisolated struct RaceResult: Identifiable, Hashable, Sendable, Codable {
     let id: UUID
     let completedAt: Date
 

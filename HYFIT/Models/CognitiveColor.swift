@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-enum CognitiveColor: String, CaseIterable, Codable, Sendable, Hashable {
+nonisolated enum CognitiveColor: String, CaseIterable, Codable, Sendable, Hashable {
     case yellow = "Y"
     case red = "R"
     case green = "G"
