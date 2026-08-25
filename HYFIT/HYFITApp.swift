@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct HYFITApp: App {
@@ -11,5 +12,6 @@ struct HYFITApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: PersistedRaceResult.self)
     }
 }

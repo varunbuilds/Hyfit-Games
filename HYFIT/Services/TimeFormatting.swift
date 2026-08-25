@@ -48,4 +48,12 @@ enum TimeFormatting {
         let seconds = totalSeconds % 60
         return String(format: "%@%02d:%02d", sign, minutes, seconds)
     }
+
+    /// History date: 25 AUG 2026
+    static func historyDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "d MMM yyyy"
+        return formatter.string(from: date).uppercased()
+    }
 }

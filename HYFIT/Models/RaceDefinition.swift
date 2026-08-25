@@ -40,13 +40,13 @@ struct RaceDefinition: Identifiable, Codable, Sendable, Hashable {
     }
 }
 
-struct TeamMember: Identifiable, Hashable, Sendable {
+struct TeamMember: Identifiable, Hashable, Sendable, Codable {
     let id: String
     let role: String
     let name: String
 }
 
-struct RaceSetupConfiguration: Hashable, Sendable {
+struct RaceSetupConfiguration: Hashable, Sendable, Codable {
     var category: RaceCategory
     var mode: RaceMode
     var you: TeamMember

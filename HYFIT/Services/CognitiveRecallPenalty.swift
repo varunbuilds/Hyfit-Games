@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum CognitivePenaltyType: String, Sendable, Hashable {
+enum CognitivePenaltyType: String, Sendable, Hashable, Codable {
     case fullRecall = "FULL_RECALL"
     case noPenalty = "NO_PENALTY"
     case incorrectRecall = "INCORRECT_RECALL"
@@ -21,7 +21,7 @@ enum CognitivePenaltyType: String, Sendable, Hashable {
     }
 }
 
-struct CognitiveRecallPenaltyResult: Sendable, Hashable {
+struct CognitiveRecallPenaltyResult: Sendable, Hashable, Codable {
     let correctPositions: Int
     /// Signed seconds applied to raw finish time (−30, 0, +30, +60).
     let penaltySeconds: TimeInterval

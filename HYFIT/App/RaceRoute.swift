@@ -10,4 +10,5 @@ enum RaceRoute: Hashable {
     case format
     case activeRace
     case completion
+    case raceDetail(UUID)
 }

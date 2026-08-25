@@ -4,19 +4,33 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+
     @State private var path = NavigationPath()
     @State private var setup = RaceSetupConfiguration.maleDoublesPlaceholder
     @State private var session: RaceSession?
     /// Set together with `session`; navigation runs only after state is committed.
     @State private var pendingActiveRaceNavigation = false
+    @State private var historyResults: [RaceResult] = []
+
+    private var resultStore: RaceResultStore {
+        RaceResultStore(modelContext: modelContext)
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
-            HomeView {
-                path.append(RaceRoute.setup)
-            }
+            HomeView(
+                onStartRace: {
+                    path.append(RaceRoute.setup)
+                },
+                onSelectHistoryResult: { result in
+                    path.append(RaceRoute.raceDetail(result.id))
+                },
+                historyResults: historyResults
+            )
             .navigationDestination(for: RaceRoute.self) { route in
                 destination(for: route)
             }
@@ -25,10 +39,13 @@ struct ContentView: View {
         .tint(HYFITTheme.lime)
         .onChange(of: pendingActiveRaceNavigation) { _, shouldNavigate in
             guard shouldNavigate else { return }
-            // Session must already be committed in this same render pass.
             guard session != nil else { return }
             pendingActiveRaceNavigation = false
             path.append(RaceRoute.activeRace)
+        }
+        .onAppear {
+            refreshHistory()
+            resultStore.debugLogStoreCount(context: "launch")
         }
     }
 
@@ -52,12 +69,13 @@ struct ContentView: View {
                 RaceView(
                     session: session,
                     onRaceCompleted: {
+                        persistCompletedResultIfNeeded(from: session)
+                        refreshHistory()
                         path.append(RaceRoute.completion)
                     },
                     onAbortRace: abortActiveRace
                 )
             } else {
-                // Never wipe the stack — that caused first-launch bounce-to-home.
                 RaceRouteLoadingView()
             }
         case .completion:
@@ -70,11 +88,15 @@ struct ContentView: View {
             } else {
                 RaceRouteLoadingView()
             }
+        case .raceDetail(let id):
+            if let result = resultStore.fetch(id: id) ?? historyResults.first(where: { $0.id == id }) {
+                RaceDetailView(result: result, onBack: { pop() })
+            } else {
+                RaceRouteLoadingView()
+            }
         }
     }
 
-    /// Creates and starts the session first; navigation is deferred to `onChange`
-    /// so the active-race destination never mounts with a nil session.
     private func startActiveRace() {
         let raceSession = RaceSession(
             definition: RaceCatalog.definition(for: setup.category),
@@ -85,14 +107,23 @@ struct ContentView: View {
         pendingActiveRaceNavigation = true
     }
 
+    private func persistCompletedResultIfNeeded(from session: RaceSession) {
+        guard let result = session.raceResult else { return }
+        resultStore.saveIfNeeded(result)
+    }
+
+    private func refreshHistory() {
+        historyResults = resultStore.fetchAll()
+    }
+
     private func finishAndGoHome() {
         session?.resetToIdle()
         session = nil
         pendingActiveRaceNavigation = false
+        refreshHistory()
         path = NavigationPath()
     }
 
-    /// Aborts an in-progress race without completion or penalty.
     private func abortActiveRace() {
         session?.resetToIdle()
         session = nil
@@ -119,7 +150,6 @@ struct ContentView: View {
     }
 }
 
-/// Intentional placeholder if a race route is ever reached without session state.
 private struct RaceRouteLoadingView: View {
     var body: some View {
         ZStack {
@@ -133,4 +163,5 @@ private struct RaceRouteLoadingView: View {
 
 #Preview {
     ContentView()
+        .modelContainer(for: PersistedRaceResult.self, inMemory: true)
 }

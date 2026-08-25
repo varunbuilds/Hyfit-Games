@@ -32,10 +32,14 @@ final class RaceSession {
 
     /// Generated once at race start; never regenerated until a new session.
     private(set) var cognitiveSequence: [CognitiveColor] = []
+    /// Retained after Submit for RaceResult snapshot (not used for live scoring re-runs).
+    private(set) var submittedCognitiveSequence: [CognitiveColor] = []
     private(set) var recallAttemptFailed: Bool = false
     /// Persisted after first Submit — never recalculated on re-render.
     private(set) var cognitivePenaltyResult: CognitiveRecallPenaltyResult?
     private(set) var hasSubmittedCognitiveRecall: Bool = false
+    /// Immutable completed-race snapshot — created once; never mutated.
+    private(set) var raceResult: RaceResult?
 
     private(set) var distanceTracker: any DistanceTracking
 
@@ -175,9 +179,11 @@ final class RaceSession {
         guard stage == .ready || stage == .idle else { return }
         let now = Date()
         cognitiveSequence = CognitiveColor.randomSequence(count: 10)
+        submittedCognitiveSequence = []
         recallAttemptFailed = false
         cognitivePenaltyResult = nil
         hasSubmittedCognitiveRecall = false
+        raceResult = nil
         raceStartDate = now
         segmentStartDate = now
         raceEndDate = nil
@@ -238,12 +244,12 @@ final class RaceSession {
         }
     }
 
-    /// Applies cognitive penalty once on Submit, then finishes the race.
+    /// Applies cognitive penalty once on Submit, then finishes the race and freezes RaceResult.
     /// Empty submission is treated as refusal (+60s). Partial non-empty is scored by position.
     @discardableResult
     func submitCognitiveRecall(input: String) -> Bool {
         guard stage == .cognitiveRecall else { return false }
-        // Prevent duplicate penalty application.
+        // Prevent duplicate penalty application and duplicate RaceResult.
         if hasSubmittedCognitiveRecall {
             return true
         }
@@ -266,9 +272,19 @@ final class RaceSession {
         )
 
         cognitivePenaltyResult = result
+        submittedCognitiveSequence = submitted
         hasSubmittedCognitiveRecall = true
         recallAttemptFailed = false
         finishRace(at: now)
+
+        // Snapshot once after finish timestamps are set; uses existing timing/penalty only.
+        if raceResult == nil {
+            raceResult = RaceResult.snapshot(
+                from: self,
+                submittedSequence: submitted,
+                completedAt: now
+            )
+        }
         return true
     }
 
@@ -285,9 +301,11 @@ final class RaceSession {
         raceEndDate = nil
         completedStations = []
         cognitiveSequence = []
+        submittedCognitiveSequence = []
         recallAttemptFailed = false
         cognitivePenaltyResult = nil
         hasSubmittedCognitiveRecall = false
+        raceResult = nil
     }
 
     func prepareAgain() {
@@ -299,9 +317,11 @@ final class RaceSession {
         raceEndDate = nil
         completedStations = []
         cognitiveSequence = []
+        submittedCognitiveSequence = []
         recallAttemptFailed = false
         cognitivePenaltyResult = nil
         hasSubmittedCognitiveRecall = false
+        raceResult = nil
     }
 
     // MARK: - Private

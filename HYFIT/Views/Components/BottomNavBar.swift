@@ -31,7 +31,12 @@ enum HomeTab: String, CaseIterable, Identifiable {
         }
     }
 
-    var isImplemented: Bool { self == .race }
+    var isImplemented: Bool {
+        switch self {
+        case .race, .history: true
+        case .stats, .profile: false
+        }
+    }
 }
 
 struct BottomNavBar: View {

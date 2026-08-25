@@ -7,13 +7,42 @@ import SwiftUI
 
 struct HomeView: View {
     let onStartRace: () -> Void
+    let onSelectHistoryResult: (RaceResult) -> Void
+    let historyResults: [RaceResult]
+
     @State private var selectedTab: HomeTab = .race
 
     var body: some View {
         ZStack {
             HYFITTheme.background.ignoresSafeArea()
 
-            // Athletic atmosphere — desaturated geometric field, no stock fitness chrome.
+            VStack(spacing: 0) {
+                Group {
+                    switch selectedTab {
+                    case .race:
+                        raceLanding
+                    case .history:
+                        RaceHistoryView(
+                            results: historyResults,
+                            onSelect: onSelectHistoryResult,
+                            onStartRace: {
+                                selectedTab = .race
+                                onStartRace()
+                            }
+                        )
+                    case .stats, .profile:
+                        raceLanding
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                BottomNavBar(selected: $selectedTab)
+            }
+        }
+    }
+
+    private var raceLanding: some View {
+        ZStack {
             AthleticBackdrop()
                 .ignoresSafeArea()
                 .opacity(0.55)
@@ -53,8 +82,6 @@ struct HomeView: View {
                 .padding(.horizontal, HYFITTheme.horizontalPadding)
 
                 Spacer()
-
-                BottomNavBar(selected: $selectedTab)
             }
         }
     }
@@ -84,7 +111,6 @@ private struct AthleticBackdrop: View {
             ZStack(alignment: .topTrailing) {
                 HYFITTheme.background
 
-                // Soft vignette blocks suggesting motion lanes
                 ForEach(0..<6, id: \.self) { index in
                     Rectangle()
                         .fill(Color.white.opacity(index.isMultiple(of: 2) ? 0.03 : 0.015))
@@ -105,5 +131,5 @@ private struct AthleticBackdrop: View {
 }
 
 #Preview {
-    HomeView(onStartRace: {})
+    HomeView(onStartRace: {}, onSelectHistoryResult: { _ in }, historyResults: [])
 }

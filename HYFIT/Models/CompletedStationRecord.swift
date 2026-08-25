@@ -5,7 +5,7 @@
 
 import Foundation
 
-struct CompletedStationRecord: Identifiable, Hashable, Sendable {
+struct CompletedStationRecord: Identifiable, Hashable, Sendable, Codable {
     let id: String
     let station: RaceStation
     let startedAt: Date
