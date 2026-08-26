@@ -14,6 +14,8 @@ struct ContentView: View {
     @State private var session: RaceSession?
     /// Set together with `session`; navigation runs only after state is committed.
     @State private var pendingActiveRaceNavigation = false
+    /// Prevents stacking multiple `.completion` routes for the same finished race.
+    @State private var didPushCompletionRoute = false
     @State private var historyResults: [RaceResult] = []
 
     private var resultStore: RaceResultStore {
@@ -73,11 +75,7 @@ struct ContentView: View {
             if let session {
                 RaceView(
                     session: session,
-                    onRaceCompleted: {
-                        persistCompletedResultIfNeeded(from: session)
-                        refreshHistory()
-                        path.append(RaceRoute.completion)
-                    },
+                    onRaceCompleted: handleRaceCompleted,
                     onAbortRace: abortActiveRace
                 )
             } else {
@@ -103,6 +101,7 @@ struct ContentView: View {
     }
 
     private func startActiveRace() {
+        didPushCompletionRoute = false
         let raceSession = RaceSession(
             definition: RaceCatalog.definition(for: setup.category),
             setup: setup,
@@ -111,6 +110,17 @@ struct ContentView: View {
         raceSession.startRace()
         session = raceSession
         pendingActiveRaceNavigation = true
+    }
+
+    /// Single owner for appending `.completion` — at most once per finished race.
+    private func handleRaceCompleted() {
+        guard let session else { return }
+        guard session.stage == .completed else { return }
+        guard !didPushCompletionRoute else { return }
+        didPushCompletionRoute = true
+        persistCompletedResultIfNeeded(from: session)
+        refreshHistory()
+        path.append(RaceRoute.completion)
     }
 
     private func persistCompletedResultIfNeeded(from session: RaceSession) {
@@ -126,6 +136,7 @@ struct ContentView: View {
         session?.resetToIdle()
         session = nil
         pendingActiveRaceNavigation = false
+        didPushCompletionRoute = false
         refreshHistory()
         path = NavigationPath()
     }
@@ -134,6 +145,7 @@ struct ContentView: View {
         session?.resetToIdle()
         session = nil
         pendingActiveRaceNavigation = false
+        didPushCompletionRoute = false
         var next = NavigationPath()
         next.append(RaceRoute.setup)
         next.append(RaceRoute.format)
@@ -144,6 +156,7 @@ struct ContentView: View {
         session?.prepareAgain()
         session = nil
         pendingActiveRaceNavigation = false
+        didPushCompletionRoute = false
         var next = NavigationPath()
         next.append(RaceRoute.setup)
         next.append(RaceRoute.format)

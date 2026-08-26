@@ -13,6 +13,8 @@ struct RaceView: View {
 
     @State private var showExitConfirmation = false
     @State private var isAborting = false
+    /// Ensures completion navigation is reported once per finished session.
+    @State private var didNotifyCompletion = false
 
     private var isActiveRace: Bool {
         switch session.stage {
@@ -49,9 +51,10 @@ struct RaceView: View {
             Text("Your current race will be lost.")
         }
         .onChange(of: session.stage) { _, newStage in
+            // Single authoritative completion trigger — do not also fire from .completed onAppear.
             if newStage == .completed {
                 showExitConfirmation = false
-                onRaceCompleted()
+                notifyCompletionIfNeeded()
             }
         }
     }
@@ -120,7 +123,9 @@ struct RaceView: View {
                     .transition(.opacity)
 
             case .completed:
-                Color.clear.onAppear(perform: onRaceCompleted)
+                // Navigation is owned by onChange(stage → .completed). Keep a blank
+                // placeholder so we do not fire onRaceCompleted a second time via onAppear.
+                Color.clear
 
             case .idle, .ready:
                 Color.clear
@@ -167,6 +172,14 @@ struct RaceView: View {
         withAnimation(.easeInOut(duration: 0.22)) {
             session.completeCurrentStation()
         }
+    }
+
+    private func notifyCompletionIfNeeded() {
+        guard !isAborting else { return }
+        guard !didNotifyCompletion else { return }
+        guard session.stage == .completed else { return }
+        didNotifyCompletion = true
+        onRaceCompleted()
     }
 
     private func confirmAbort() {

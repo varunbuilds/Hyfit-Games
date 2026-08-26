@@ -43,6 +43,7 @@ struct RaceCompletionView: View {
             .padding(.bottom, 24)
         }
         .navigationBarBackButtonHidden(true)
+        .disableInteractivePopGesture()
     }
 
     private var header: some View {
