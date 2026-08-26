@@ -33,8 +33,7 @@ enum HomeTab: String, CaseIterable, Identifiable {
 
     var isImplemented: Bool {
         switch self {
-        case .race, .history, .stats: true
-        case .profile: false
+        case .race, .history, .stats, .profile: true
         }
     }
 }

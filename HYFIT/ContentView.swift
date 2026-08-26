@@ -10,7 +10,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var path = NavigationPath()
-    @State private var setup = RaceSetupConfiguration.maleDoublesPlaceholder
+    @State private var setup = AthleteProfileStore.load().asRaceSetupConfiguration()
     @State private var session: RaceSession?
     /// Set together with `session`; navigation runs only after state is committed.
     @State private var pendingActiveRaceNavigation = false
@@ -30,7 +30,11 @@ struct ContentView: View {
                     path.append(RaceRoute.raceDetail(result.id))
                 },
                 historyResults: historyResults,
-                onRefreshResults: refreshHistory
+                onRefreshResults: refreshHistory,
+                onProfileSaved: { profile in
+                    // Future Race Setup defaults only — never mutates an active RaceSession.
+                    setup = profile.asRaceSetupConfiguration()
+                }
             )
             .navigationDestination(for: RaceRoute.self) { route in
                 destination(for: route)

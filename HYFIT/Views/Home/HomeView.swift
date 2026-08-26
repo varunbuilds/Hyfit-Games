@@ -10,6 +10,7 @@ struct HomeView: View {
     let onSelectHistoryResult: (RaceResult) -> Void
     let historyResults: [RaceResult]
     var onRefreshResults: () -> Void = {}
+    var onProfileSaved: (AthleteProfile) -> Void = { _ in }
 
     @State private var selectedTab: HomeTab = .race
 
@@ -41,7 +42,12 @@ struct HomeView: View {
                             onRefresh: onRefreshResults
                         )
                     case .profile:
-                        raceLanding
+                        ProfileView(
+                            results: historyResults,
+                            onProfileSaved: onProfileSaved,
+                            onOpenStats: { selectedTab = .stats },
+                            onRefreshResults: onRefreshResults
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -50,7 +56,7 @@ struct HomeView: View {
             }
         }
         .onChange(of: selectedTab) { _, tab in
-            if tab == .stats || tab == .history {
+            if tab == .stats || tab == .history || tab == .profile {
                 onRefreshResults()
             }
         }
