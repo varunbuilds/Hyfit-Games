@@ -9,6 +9,7 @@ struct HomeView: View {
     let onStartRace: () -> Void
     let onSelectHistoryResult: (RaceResult) -> Void
     let historyResults: [RaceResult]
+    var onRefreshResults: () -> Void = {}
 
     @State private var selectedTab: HomeTab = .race
 
@@ -30,13 +31,27 @@ struct HomeView: View {
                                 onStartRace()
                             }
                         )
-                    case .stats, .profile:
+                    case .stats:
+                        StatsView(
+                            results: historyResults,
+                            onStartRace: {
+                                selectedTab = .race
+                                onStartRace()
+                            },
+                            onRefresh: onRefreshResults
+                        )
+                    case .profile:
                         raceLanding
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 BottomNavBar(selected: $selectedTab)
+            }
+        }
+        .onChange(of: selectedTab) { _, tab in
+            if tab == .stats || tab == .history {
+                onRefreshResults()
             }
         }
     }
@@ -131,5 +146,10 @@ private struct AthleticBackdrop: View {
 }
 
 #Preview {
-    HomeView(onStartRace: {}, onSelectHistoryResult: { _ in }, historyResults: [])
+    HomeView(
+        onStartRace: {},
+        onSelectHistoryResult: { _ in },
+        historyResults: [],
+        onRefreshResults: {}
+    )
 }

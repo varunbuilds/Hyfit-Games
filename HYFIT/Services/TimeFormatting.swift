@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum TimeFormatting {
+nonisolated enum TimeFormatting {
     /// Formats as M:SS.t or MM:SS.t (tenths of a second).
     static func raceClock(_ interval: TimeInterval) -> String {
         let clamped = max(0, interval)

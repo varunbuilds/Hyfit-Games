@@ -29,7 +29,8 @@ struct ContentView: View {
                 onSelectHistoryResult: { result in
                     path.append(RaceRoute.raceDetail(result.id))
                 },
-                historyResults: historyResults
+                historyResults: historyResults,
+                onRefreshResults: refreshHistory
             )
             .navigationDestination(for: RaceRoute.self) { route in
                 destination(for: route)
