@@ -44,6 +44,9 @@ final class RaceSession {
     private(set) var distanceTracker: any DistanceTracking
 
     private var tickTask: Task<Void, Never>?
+    /// Non-nil while a physical segment completion is in flight.
+    /// Prevents rapid I'M DONE taps from completing the same segment twice.
+    private var completingPhysicalIndex: Int?
 
     init(
         definition: RaceDefinition,
@@ -189,6 +192,7 @@ final class RaceSession {
         raceEndDate = nil
         completedStations = []
         displayNow = now
+        completingPhysicalIndex = nil
         stage = .cognitivePreview
         distanceTracker.stop()
         startTicker()
@@ -206,6 +210,10 @@ final class RaceSession {
               let segment = definition.physicalSegment(at: index),
               let station = segment.station,
               let segmentStartDate else { return }
+
+        // State-based debounce: reject a second tap for this (or any) in-flight segment.
+        guard completingPhysicalIndex == nil else { return }
+        completingPhysicalIndex = index
 
         let now = Date()
         displayNow = now
@@ -239,6 +247,7 @@ final class RaceSession {
             stage = .cognitiveRecall
             self.segmentStartDate = now
             recallAttemptFailed = false
+            completingPhysicalIndex = nil
         } else {
             enterPhysicalSegment(index: index + 1, at: now)
         }
@@ -306,6 +315,7 @@ final class RaceSession {
         cognitivePenaltyResult = nil
         hasSubmittedCognitiveRecall = false
         raceResult = nil
+        completingPhysicalIndex = nil
     }
 
     func prepareAgain() {
@@ -322,11 +332,13 @@ final class RaceSession {
         cognitivePenaltyResult = nil
         hasSubmittedCognitiveRecall = false
         raceResult = nil
+        completingPhysicalIndex = nil
     }
 
     // MARK: - Private
 
     private func enterPhysicalSegment(index: Int, at now: Date) {
+        completingPhysicalIndex = nil
         stage = .physical(index)
         segmentStartDate = now
         beginDistanceTrackingIfNeeded(at: now)
