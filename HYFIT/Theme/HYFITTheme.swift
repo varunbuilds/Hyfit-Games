@@ -9,6 +9,8 @@ enum HYFITTheme {
     static let background = Color(red: 0.02, green: 0.02, blue: 0.02)
     static let surface = Color(red: 0.10, green: 0.10, blue: 0.10)
     static let surfaceSecondary = Color(red: 0.14, green: 0.14, blue: 0.14)
+    /// Slightly lifted surface for floating chrome (bars, sheets).
+    static let surfaceElevated = Color(red: 0.16, green: 0.16, blue: 0.16)
     static let border = Color.white.opacity(0.14)
     static let borderStrong = Color.white.opacity(0.22)
     static let primaryText = Color.white
@@ -21,8 +23,11 @@ enum HYFITTheme {
 
     static let cornerRadius: CGFloat = 14
     static let cornerRadiusSmall: CGFloat = 10
+    static let cornerRadiusLarge: CGFloat = 22
     static let borderWidth: CGFloat = 1
     static let horizontalPadding: CGFloat = 20
+
+    static let quickSpring = Animation.spring(response: 0.32, dampingFraction: 0.82)
 }
 
 enum HYFITTypography {
