@@ -15,42 +15,21 @@ struct RaceDetailView: View {
         ZStack {
             HYFITTheme.background.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                header
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.top, 8)
-                    .padding(.bottom, 16)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        overallSection
-                        cognitiveSection
-                        aggregatesSection
-                        breakdownSection
-                    }
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.bottom, 40)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    overallSection
+                    cognitiveSection
+                    aggregatesSection
+                    breakdownSection
                 }
+                .padding(.horizontal, HYFITTheme.horizontalPadding)
+                .padding(.top, 12)
+                .padding(.bottom, 40)
             }
         }
-        .navigationBarBackButtonHidden(true)
-    }
-
-    private var header: some View {
-        HStack(spacing: 14) {
-            Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(HYFITTheme.primaryText)
-                    .frame(width: 36, height: 36)
-            }
-            .buttonStyle(.plain)
-
-            Text("RACE DETAIL")
-                .hyfitTitle()
-
-            Spacer()
-        }
+        .navigationTitle("Race Detail")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar(.hidden, for: .tabBar)
     }
 
     private var overallSection: some View {

@@ -5,61 +5,99 @@
 
 import SwiftUI
 
-struct HomeView: View {
+struct HomeView<Destination: View>: View {
+    @Binding var path: NavigationPath
     let onStartRace: () -> Void
     let onSelectHistoryResult: (RaceResult) -> Void
     let historyResults: [RaceResult]
     var onRefreshResults: () -> Void = {}
     var onProfileSaved: (AthleteProfile) -> Void = { _ in }
+    @ViewBuilder var destination: (RaceRoute) -> Destination
 
     @State private var selectedTab: HomeTab = .race
+    @State private var historyPath = NavigationPath()
+    @State private var isShowingProfile = false
 
     var body: some View {
-        ZStack {
-            HYFITTheme.background.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                Group {
-                    switch selectedTab {
-                    case .race:
-                        raceLanding
-                    case .history:
-                        RaceHistoryView(
-                            results: historyResults,
-                            onSelect: onSelectHistoryResult,
-                            onStartRace: {
-                                selectedTab = .race
-                                onStartRace()
-                            }
-                        )
-                    case .stats:
-                        StatsView(
-                            results: historyResults,
-                            onStartRace: {
-                                selectedTab = .race
-                                onStartRace()
-                            },
-                            onRefresh: onRefreshResults
-                        )
-                    case .profile:
-                        ProfileView(
-                            results: historyResults,
-                            onProfileSaved: onProfileSaved,
-                            onOpenStats: { selectedTab = .stats },
-                            onRefreshResults: onRefreshResults
-                        )
-                    }
+        TabView(selection: $selectedTab) {
+            Tab(HomeTab.race.title, systemImage: HomeTab.race.systemImage, value: .race) {
+                NavigationStack(path: $path) {
+                    raceLanding
+                        .hyfitPageHeader(title: HomeTab.race.title, onOpenProfile: openProfile)
+                        .navigationDestination(for: RaceRoute.self, destination: destination)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
 
-                BottomNavBar(selected: $selectedTab)
+            Tab(HomeTab.history.title, systemImage: HomeTab.history.systemImage, value: .history) {
+                NavigationStack(path: $historyPath) {
+                    RaceHistoryView(
+                        results: historyResults,
+                        onSelect: { result in
+                            onSelectHistoryResult(result)
+                            historyPath.append(RaceRoute.raceDetail(result.id))
+                        },
+                        onStartRace: {
+                            selectedTab = .race
+                            onStartRace()
+                        }
+                    )
+                    .hyfitPageHeader(title: HomeTab.history.title, onOpenProfile: openProfile)
+                    .navigationDestination(for: RaceRoute.self, destination: destination)
+                }
+            }
+
+            Tab(HomeTab.stats.title, systemImage: HomeTab.stats.systemImage, value: .stats) {
+                NavigationStack {
+                    StatsView(
+                        results: historyResults,
+                        onStartRace: {
+                            selectedTab = .race
+                            onStartRace()
+                        },
+                        onRefresh: onRefreshResults
+                    )
+                    .hyfitPageHeader(title: HomeTab.stats.title, onOpenProfile: openProfile)
+                }
+            }
+
+            Tab(HomeTab.events.title, systemImage: HomeTab.events.systemImage, value: .events) {
+                NavigationStack {
+                    EventsView(
+                        onStartRace: {
+                            selectedTab = .race
+                            onStartRace()
+                        }
+                    )
+                    .hyfitPageHeader(title: HomeTab.events.title, onOpenProfile: openProfile)
+                }
             }
         }
+        .tint(HYFITTheme.lime)
+        .sheet(isPresented: $isShowingProfile) {
+            NavigationStack {
+                ProfileView(
+                    results: historyResults,
+                    onProfileSaved: onProfileSaved,
+                    onOpenStats: {
+                        isShowingProfile = false
+                        selectedTab = .stats
+                    },
+                    onRefreshResults: onRefreshResults
+                )
+            }
+            .preferredColorScheme(.dark)
+            .tint(HYFITTheme.lime)
+        }
         .onChange(of: selectedTab) { _, tab in
-            if tab == .stats || tab == .history || tab == .profile {
+            if tab == .stats || tab == .history {
                 onRefreshResults()
             }
         }
+    }
+
+    private func openProfile() {
+        onRefreshResults()
+        isShowingProfile = true
     }
 
     private var raceLanding: some View {
@@ -68,9 +106,7 @@ struct HomeView: View {
                 .ignoresSafeArea()
                 .opacity(0.55)
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 24)
-
+            ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     branding
 
@@ -79,11 +115,11 @@ struct HomeView: View {
                             .hyfitLabel(HYFITTheme.lime)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("TRAIN.")
+                            Text("RUN.")
                                 .hyfitDisplay()
-                            Text("RACE.")
+                            Text("LIFT.")
                                 .hyfitDisplay()
-                            Text("OUTPERFORM.")
+                            Text("LIVE.")
                                 .font(HYFITTypography.display)
                                 .foregroundStyle(HYFITTheme.lime)
                                 .textCase(.uppercase)
@@ -101,8 +137,8 @@ struct HomeView: View {
                         .padding(.top, 8)
                 }
                 .padding(.horizontal, HYFITTheme.horizontalPadding)
-
-                Spacer()
+                .padding(.top, 20)
+                .padding(.bottom, 32)
             }
         }
     }
@@ -153,9 +189,12 @@ private struct AthleticBackdrop: View {
 
 #Preview {
     HomeView(
+        path: .constant(NavigationPath()),
         onStartRace: {},
         onSelectHistoryResult: { _ in },
         historyResults: [],
-        onRefreshResults: {}
+        onRefreshResults: {},
+        destination: { _ in EmptyView() }
     )
+    .preferredColorScheme(.dark)
 }

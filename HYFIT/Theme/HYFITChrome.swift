@@ -70,6 +70,23 @@ struct HYFITBackButton: View {
     }
 }
 
+struct HYFITProfileToolbarButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "person.crop.circle.fill")
+                .symbolRenderingMode(.hierarchical)
+                .font(.system(size: 28, weight: .regular))
+                .foregroundStyle(HYFITTheme.lime)
+                .frame(width: 34, height: 34)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Profile")
+    }
+}
+
 // MARK: - Interaction
 
 struct HYFITPressableStyle: ButtonStyle {
@@ -118,5 +135,16 @@ extension View {
                 .stroke(HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
         )
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    func hyfitPageHeader(title: String, onOpenProfile: @escaping () -> Void) -> some View {
+        self
+            .navigationTitle(title)
+            .toolbarTitleDisplayMode(.inlineLarge)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    HYFITProfileToolbarButton(action: onOpenProfile)
+                }
+            }
     }
 }

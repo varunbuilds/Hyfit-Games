@@ -18,36 +18,30 @@ struct StatsView: View {
         ZStack {
             HYFITTheme.background.ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text("STATS")
-                    .hyfitTitle()
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.top, 24)
-                    .padding(.bottom, 20)
-
+            ScrollView {
                 if summary.isEmpty {
                     emptyState
+                        .containerRelativeFrame(.vertical)
                 } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 28) {
-                            performanceSection
-                            progressSection
-                            if !summary.runRows.isEmpty {
-                                runPerformanceSection
-                            }
-                            if !summary.stationRows.isEmpty {
-                                stationPerformanceSection
-                            }
-                            if let cognitive = summary.cognitive {
-                                cognitiveSection(cognitive)
-                            }
-                            if let bests = summary.personalBests {
-                                personalBestsSection(bests)
-                            }
+                    VStack(alignment: .leading, spacing: 28) {
+                        performanceSection
+                        progressSection
+                        if !summary.runRows.isEmpty {
+                            runPerformanceSection
                         }
-                        .padding(.horizontal, HYFITTheme.horizontalPadding)
-                        .padding(.bottom, 32)
+                        if !summary.stationRows.isEmpty {
+                            stationPerformanceSection
+                        }
+                        if let cognitive = summary.cognitive {
+                            cognitiveSection(cognitive)
+                        }
+                        if let bests = summary.personalBests {
+                            personalBestsSection(bests)
+                        }
                     }
+                    .padding(.horizontal, HYFITTheme.horizontalPadding)
+                    .padding(.top, 12)
+                    .padding(.bottom, 32)
                 }
             }
         }

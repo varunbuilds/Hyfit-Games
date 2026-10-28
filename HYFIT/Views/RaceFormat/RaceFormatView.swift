@@ -14,25 +14,19 @@ struct RaceFormatView: View {
         ZStack {
             HYFITTheme.background.ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.top, 8)
-                    .padding(.bottom, 20)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(definition.segments.enumerated()), id: \.element.id) { index, segment in
-                            FormatTimelineRow(
-                                segment: segment,
-                                isFirst: index == 0,
-                                isLast: index == definition.segments.count - 1
-                            )
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(definition.segments.enumerated()), id: \.element.id) { index, segment in
+                        FormatTimelineRow(
+                            segment: segment,
+                            isFirst: index == 0,
+                            isLast: index == definition.segments.count - 1
+                        )
                     }
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.bottom, 120)
                 }
+                .padding(.horizontal, HYFITTheme.horizontalPadding)
+                .padding(.top, 12)
+                .padding(.bottom, 120)
             }
 
             VStack {
@@ -42,24 +36,9 @@ struct RaceFormatView: View {
                     .padding(.bottom, 24)
             }
         }
-        .navigationBarBackButtonHidden(true)
-    }
-
-    private var header: some View {
-        HStack(spacing: 14) {
-            Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(HYFITTheme.primaryText)
-                    .frame(width: 36, height: 36)
-            }
-            .buttonStyle(.plain)
-
-            Text("RACE FORMAT")
-                .hyfitTitle()
-
-            Spacer()
-        }
+        .navigationTitle("Race Format")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar(.hidden, for: .tabBar)
     }
 }
 

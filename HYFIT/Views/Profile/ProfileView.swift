@@ -11,6 +11,8 @@ struct ProfileView: View {
     let onOpenStats: () -> Void
     let onRefreshResults: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
+
     @State private var profile: AthleteProfile = .default
     @State private var draft: AthleteProfile = .default
     @State private var isEditing = false
@@ -24,28 +26,24 @@ struct ProfileView: View {
         ZStack {
             HYFITTheme.background.ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.top, 24)
-                    .padding(.bottom, 20)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    header
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 28) {
-                        athleteCard
+                    athleteCard
 
-                        if isEditing {
-                            editSection
-                            racePreferencesSection(editable: true)
-                        } else {
-                            infoSection
-                            racePreferencesSection(editable: false)
-                            performanceSnapshot
-                        }
+                    if isEditing {
+                        editSection
+                        racePreferencesSection(editable: true)
+                    } else {
+                        infoSection
+                        racePreferencesSection(editable: false)
+                        performanceSnapshot
                     }
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.bottom, 120)
                 }
+                .padding(.horizontal, HYFITTheme.horizontalPadding)
+                .padding(.top, 12)
+                .padding(.bottom, 120)
             }
 
             VStack {
@@ -57,6 +55,16 @@ struct ProfileView: View {
                     .background(HYFITTheme.background)
             }
         }
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+                .fontWeight(.semibold)
+            }
+        }
         .onAppear {
             reloadProfile()
             onRefreshResults()
@@ -66,16 +74,13 @@ struct ProfileView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("PROFILE")
-                .hyfitTitle()
+        VStack(alignment: .leading, spacing: 6) {
             Text("ATHLETE")
                 .hyfitLabel(HYFITTheme.lime)
             if !hasSavedProfile && !isEditing {
                 Text("Configure your profile for future races.")
                     .font(HYFITTypography.caption)
                     .foregroundStyle(HYFITTheme.secondaryText)
-                    .padding(.top, 2)
             }
         }
     }

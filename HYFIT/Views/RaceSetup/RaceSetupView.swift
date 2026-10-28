@@ -14,24 +14,16 @@ struct RaceSetupView: View {
         ZStack {
             HYFITTheme.background.ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.top, 8)
-                    .padding(.bottom, 28)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        categoryField
-                        teamSection
-                        modeField
-                        distanceModeSection
-                    }
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.bottom, 120)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    categoryField
+                    teamSection
+                    modeField
+                    distanceModeSection
                 }
-
-                Spacer(minLength: 0)
+                .padding(.horizontal, HYFITTheme.horizontalPadding)
+                .padding(.top, 12)
+                .padding(.bottom, 120)
             }
 
             VStack {
@@ -43,24 +35,9 @@ struct RaceSetupView: View {
                     .background(HYFITTheme.background)
             }
         }
-        .navigationBarBackButtonHidden(true)
-    }
-
-    private var header: some View {
-        HStack(spacing: 14) {
-            Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(HYFITTheme.primaryText)
-                    .frame(width: 36, height: 36)
-            }
-            .buttonStyle(.plain)
-
-            Text("RACE SETUP")
-                .hyfitTitle()
-
-            Spacer()
-        }
+        .navigationTitle("Race Setup")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar(.hidden, for: .tabBar)
     }
 
     private var categoryField: some View {

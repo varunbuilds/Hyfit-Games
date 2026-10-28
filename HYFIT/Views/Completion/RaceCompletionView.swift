@@ -43,6 +43,7 @@ struct RaceCompletionView: View {
             .padding(.bottom, 24)
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .disableInteractivePopGesture()
     }
 

@@ -23,25 +23,22 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
-            HomeView(
-                onStartRace: {
-                    path.append(RaceRoute.setup)
-                },
-                onSelectHistoryResult: { result in
-                    path.append(RaceRoute.raceDetail(result.id))
-                },
-                historyResults: historyResults,
-                onRefreshResults: refreshHistory,
-                onProfileSaved: { profile in
-                    // Future Race Setup defaults only — never mutates an active RaceSession.
-                    setup = profile.asRaceSetupConfiguration()
-                }
-            )
-            .navigationDestination(for: RaceRoute.self) { route in
+        HomeView(
+            path: $path,
+            onStartRace: {
+                path.append(RaceRoute.setup)
+            },
+            onSelectHistoryResult: { _ in },
+            historyResults: historyResults,
+            onRefreshResults: refreshHistory,
+            onProfileSaved: { profile in
+                // Future Race Setup defaults only — never mutates an active RaceSession.
+                setup = profile.asRaceSetupConfiguration()
+            },
+            destination: { route in
                 destination(for: route)
             }
-        }
+        )
         .preferredColorScheme(.dark)
         .tint(HYFITTheme.lime)
         .onChange(of: pendingActiveRaceNavigation) { _, shouldNavigate in

@@ -43,6 +43,7 @@ struct RaceView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .disableInteractivePopGesture()
         .alert("Exit Race?", isPresented: $showExitConfirmation) {
             Button("Continue Race", role: .cancel) {}

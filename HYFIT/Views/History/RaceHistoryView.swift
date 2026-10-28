@@ -14,30 +14,24 @@ struct RaceHistoryView: View {
         ZStack {
             HYFITTheme.background.ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text("RACE HISTORY")
-                    .hyfitTitle()
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.top, 24)
-                    .padding(.bottom, 20)
-
+            ScrollView {
                 if results.isEmpty {
                     emptyState
+                        .containerRelativeFrame(.vertical)
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 14) {
-                            ForEach(results) { result in
-                                Button {
-                                    onSelect(result)
-                                } label: {
-                                    RaceHistoryCard(result: result)
-                                }
-                                .buttonStyle(.plain)
+                    LazyVStack(spacing: 14) {
+                        ForEach(results) { result in
+                            Button {
+                                onSelect(result)
+                            } label: {
+                                RaceHistoryCard(result: result)
                             }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, HYFITTheme.horizontalPadding)
-                        .padding(.bottom, 24)
                     }
+                    .padding(.horizontal, HYFITTheme.horizontalPadding)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
                 }
             }
         }
