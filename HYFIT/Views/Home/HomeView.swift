@@ -106,6 +106,7 @@ struct HomeView<Destination: View>: View {
                 .ignoresSafeArea()
                 .opacity(0.55)
 
+            GeometryReader { geo in
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     branding
@@ -139,6 +140,9 @@ struct HomeView<Destination: View>: View {
                 .padding(.horizontal, HYFITTheme.horizontalPadding)
                 .padding(.top, 20)
                 .padding(.bottom, 32)
+                // Vertically center the landing content in the visible area.
+                .frame(minHeight: geo.size.height, alignment: .center)
+            }
             }
         }
     }

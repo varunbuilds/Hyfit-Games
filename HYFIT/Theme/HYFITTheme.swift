@@ -31,26 +31,58 @@ enum HYFITTheme {
 }
 
 enum HYFITTypography {
-    /// Condensed heavy display — swap family later when a custom athletic font ships.
-    static func condensed(size: CGFloat, weight: Font.Weight = .bold) -> Font {
-        .system(size: size, weight: weight, design: .default)
-            .width(.condensed)
+    /// Sora weights bundled with the app. PostScript names verified from the .ttf metadata.
+    enum Weight: String {
+        case regular = "Sora-Regular"
+        case medium = "Sora-Medium"
+        case semibold = "Sora-SemiBold"
+        case bold = "Sora-Bold"
     }
 
-    static let display = condensed(size: 52, weight: .heavy)
-    static let displayLarge = condensed(size: 64, weight: .heavy)
-    static let title = condensed(size: 34, weight: .heavy)
-    static let heading = condensed(size: 22, weight: .bold)
-    static let label = condensed(size: 12, weight: .semibold)
-    static let metric = condensed(size: 48, weight: .heavy)
-    static let metricLarge = condensed(size: 56, weight: .heavy)
-    static let metricHuge = condensed(size: 72, weight: .heavy)
-    static let body = Font.system(size: 15, weight: .regular, design: .default)
-    static let bodyEmphasized = Font.system(size: 15, weight: .semibold, design: .default)
-    static let button = condensed(size: 17, weight: .heavy)
-    static let caption = Font.system(size: 13, weight: .medium, design: .default)
-    static let timer = condensed(size: 44, weight: .bold)
-    static let timerLarge = condensed(size: 56, weight: .heavy)
+    /// Sora at a fixed point size (matches the previous fixed-size system fonts).
+    static func sora(size: CGFloat, weight: Weight = .regular) -> Font {
+        .custom(weight.rawValue, fixedSize: size)
+    }
+
+    /// UIKit counterpart for system-drawn text (nav bar, tab bar, segmented control).
+    static func uiFont(size: CGFloat, weight: Weight = .regular) -> UIFont {
+        UIFont(name: weight.rawValue, size: size) ?? .systemFont(ofSize: size)
+    }
+
+    /// Applies Sora to UIKit-rendered chrome text.
+    static func configureUIKitAppearance() {
+        let nav = UINavigationBarAppearance()
+        nav.configureWithTransparentBackground()
+        nav.titleTextAttributes = [.font: uiFont(size: 17, weight: .semibold)]
+        nav.largeTitleTextAttributes = [.font: uiFont(size: 34, weight: .bold)]
+        nav.backButtonAppearance.normal.titleTextAttributes = [.font: uiFont(size: 17, weight: .medium)]
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
+        UINavigationBar.appearance().compactAppearance = nav
+
+        UITabBarItem.appearance().setTitleTextAttributes([.font: uiFont(size: 10, weight: .medium)], for: .normal)
+        UITabBarItem.appearance().setTitleTextAttributes([.font: uiFont(size: 10, weight: .semibold)], for: .selected)
+
+        UISegmentedControl.appearance().setTitleTextAttributes([.font: uiFont(size: 13, weight: .medium)], for: .normal)
+        UISegmentedControl.appearance().setTitleTextAttributes([.font: uiFont(size: 13, weight: .semibold)], for: .selected)
+    }
+
+    // Display / titles / numbers: Bold. Section headings, buttons, labels: SemiBold.
+    // Body and captions: Regular. Emphasized body: SemiBold.
+    static let display = sora(size: 52, weight: .bold)
+    static let displayLarge = sora(size: 64, weight: .bold)
+    static let title = sora(size: 34, weight: .bold)
+    static let heading = sora(size: 22, weight: .semibold)
+    static let label = sora(size: 12, weight: .semibold)
+    static let metric = sora(size: 48, weight: .bold)
+    static let metricLarge = sora(size: 56, weight: .bold)
+    static let metricHuge = sora(size: 72, weight: .bold)
+    static let body = sora(size: 15, weight: .regular)
+    static let bodyEmphasized = sora(size: 15, weight: .semibold)
+    static let button = sora(size: 17, weight: .semibold)
+    static let caption = sora(size: 13, weight: .regular)
+    static let timer = sora(size: 44, weight: .bold)
+    static let timerLarge = sora(size: 56, weight: .bold)
 }
 
 struct HYFITDisplay: ViewModifier {
