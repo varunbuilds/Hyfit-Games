@@ -238,10 +238,17 @@ enum MaleDoublesRaceDefinition {
 }
 
 enum RaceCatalog {
+    /// Race format for a category. All categories currently share the same format
+    /// (sequence of runs, stations and cognitive segments); per-category values
+    /// such as run distance or loads will be layered on here later.
     static func definition(for category: RaceCategory) -> RaceDefinition {
-        switch category {
-        case .maleDoubles:
-            MaleDoublesRaceDefinition.race
-        }
+        let base = MaleDoublesRaceDefinition.race
+        guard category != base.category else { return base }
+        return RaceDefinition(
+            id: category.rawValue.lowercased().replacingOccurrences(of: " ", with: "-") + "-v1",
+            name: "HYFIT \(category.title)",
+            category: category,
+            segments: base.segments
+        )
     }
 }

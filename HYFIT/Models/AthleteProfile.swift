@@ -14,6 +14,8 @@ nonisolated struct AthleteProfile: Hashable, Sendable, Codable {
     var mode: RaceMode
     var partnerName: String
     var distanceTrackingMode: DistanceTrackingMode
+    /// Optional profile photo (small JPEG). `nil` means no photo — initials are shown.
+    var avatarData: Data? = nil
 
     /// First-launch placeholder — not a fabricated personal identity.
     static let `default` = AthleteProfile(
@@ -66,7 +68,7 @@ nonisolated struct AthleteProfile: Hashable, Sendable, Codable {
 /// UserDefaults-backed profile store. Separate from SwiftData RaceResult persistence.
 @MainActor
 enum AthleteProfileStore {
-    private static let storageKey = "hyfit.athleteProfile.v1"
+    static let storageKey = "hyfit.athleteProfile.v1"
 
     static var hasSavedProfile: Bool {
         UserDefaults.standard.data(forKey: storageKey) != nil

@@ -16,7 +16,8 @@ struct RaceSetupView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    categoryField
+                    raceTypeSection
+                    categorySection
                     teamSection
                     modeField
                     distanceModeSection
@@ -38,20 +39,101 @@ struct RaceSetupView: View {
         .navigationTitle("Race Setup")
         .navigationBarTitleDisplayMode(.large)
         .toolbar(.hidden, for: .tabBar)
+        .animation(HYFITTheme.quickSpring, value: configuration.category)
     }
 
-    private var categoryField: some View {
-        // Extensible: swap for a picker when more categories ship.
-        HYFITFieldRow(
-            label: "CATEGORY",
-            value: configuration.category.displayName,
-            showsChevron: true
-        )
+    // MARK: - Selectors
+
+    private var raceTypeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("RACE TYPE")
+                .hyfitLabel(HYFITTheme.tertiaryText)
+                .padding(.leading, 4)
+
+            HStack(spacing: 8) {
+                ForEach(RaceGroup.allCases, id: \.self) { group in
+                    raceTypeButton(group)
+                }
+            }
+        }
+    }
+
+    private func raceTypeButton(_ group: RaceGroup) -> some View {
+        let selected = configuration.category.group == group
+        return Button {
+            guard !selected, let first = group.categories.first else { return }
+            withAnimation(HYFITTheme.quickSpring) {
+                configuration.category = first
+            }
+        } label: {
+            Text(group.displayName)
+                .font(HYFITTypography.sora(size: 12, weight: .semibold))
+                .foregroundStyle(selected ? HYFITTheme.onLime : HYFITTheme.primaryText)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .padding(.horizontal, 4)
+                .background(selected ? HYFITTheme.lime : HYFITTheme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
+                        .stroke(selected ? HYFITTheme.lime : HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var categorySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("CATEGORY")
+                .hyfitLabel(HYFITTheme.tertiaryText)
+                .padding(.leading, 4)
+
+            VStack(spacing: 8) {
+                ForEach(configuration.category.group.categories, id: \.self) { category in
+                    categoryRow(category)
+                }
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private func categoryRow(_ category: RaceCategory) -> some View {
+        let selected = configuration.category == category
+        return Button {
+            configuration.category = category
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(category.title)
+                        .font(HYFITTypography.sora(size: 16, weight: .semibold))
+                        .foregroundStyle(HYFITTheme.primaryText)
+                    Text(category.ageLabel)
+                        .font(HYFITTypography.caption)
+                        .foregroundStyle(HYFITTheme.secondaryText)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(selected ? HYFITTheme.lime : HYFITTheme.tertiaryText)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(HYFITTheme.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
+                    .stroke(selected ? HYFITTheme.lime : HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var teamSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("TEAM")
+            Text(configuration.category.isTeam ? "TEAM" : "ATHLETE")
                 .hyfitLabel(HYFITTheme.tertiaryText)
                 .padding(.leading, 4)
 
@@ -61,11 +143,13 @@ struct RaceSetupView: View {
                 showsEdit: true
             )
 
-            HYFITFieldRow(
-                label: configuration.partner.role,
-                value: configuration.partner.name,
-                showsEdit: true
-            )
+            if configuration.category.isTeam {
+                HYFITFieldRow(
+                    label: configuration.partner.role,
+                    value: configuration.partner.name,
+                    showsEdit: true
+                )
+            }
         }
         .padding(.top, 8)
     }

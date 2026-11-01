@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct ProfileView: View {
     let results: [RaceResult]
@@ -17,53 +18,55 @@ struct ProfileView: View {
     @State private var draft: AthleteProfile = .default
     @State private var isEditing = false
     @State private var hasSavedProfile = false
+    @State private var photoItem: PhotosPickerItem?
 
     private var summary: StatsSummary {
         StatsCalculator.summarize(results)
     }
 
     var body: some View {
-        ZStack {
-            HYFITTheme.background.ignoresSafeArea()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                header
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    header
-
-                    athleteCard
-
-                    if isEditing {
-                        editSection
-                        racePreferencesSection(editable: true)
-                    } else {
-                        infoSection
-                        racePreferencesSection(editable: false)
-                        performanceSnapshot
-                    }
+                if isEditing {
+                    editSection
+                } else {
+                    overviewSection
                 }
-                .padding(.horizontal, HYFITTheme.horizontalPadding)
-                .padding(.top, 12)
-                .padding(.bottom, 120)
             }
-
-            VStack {
-                Spacer()
-                bottomActions
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.bottom, 24)
-                    .padding(.top, 12)
-                    .background(HYFITTheme.background)
-            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 40)
         }
-        .navigationTitle("Profile")
-        .navigationBarTitleDisplayMode(.large)
+        .scrollDismissesKeyboard(.interactively)
+        .background(HYFITPremiumBackground())
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") {
+            ToolbarItem(placement: .confirmationAction) {
+                Button(role: .confirm) {
+                    if isEditing { saveDraft() }
                     dismiss()
                 }
-                .fontWeight(.semibold)
+                .accessibilityLabel("Done")
             }
+        }
+        .onChange(of: photoItem) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    draft.avatarData = Self.avatarJPEG(from: image)
+                }
+                photoItem = nil
+            }
+        }
+        .onChange(of: draft) { _, _ in
+            // Autosave every edit (name / photo) as it happens.
+            if isEditing && draft != profile { saveDraft() }
+        }
+        .onDisappear {
+            if isEditing { saveDraft() }
         }
         .onAppear {
             reloadProfile()
@@ -74,282 +77,247 @@ struct ProfileView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("ATHLETE")
-                .hyfitLabel(HYFITTheme.lime)
-            if !hasSavedProfile && !isEditing {
+        VStack(spacing: 14) {
+            avatar
+                .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
+
+            Text(displayProfile.displayName)
+                .font(HYFITTypography.sora(size: 28, weight: .bold))
+                .foregroundStyle(HYFITTheme.primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+
+            Button {
+                if isEditing {
+                    isEditing = false
+                } else {
+                    draft = profile
+                    isEditing = true
+                }
+            } label: {
+                Text(isEditing ? "Done" : "Edit Profile")
+                    .font(HYFITTypography.sora(size: 13, weight: .semibold))
+                    .foregroundStyle(isEditing ? HYFITTheme.onLime : HYFITTheme.primaryText)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        isEditing ? HYFITTheme.lime : Color.white.opacity(0.14),
+                        in: Capsule()
+                    )
+            }
+            .buttonStyle(.plain)
+
+            if !isEditing && !hasSavedProfile {
                 Text("Configure your profile for future races.")
                     .font(HYFITTypography.caption)
                     .foregroundStyle(HYFITTheme.secondaryText)
             }
         }
-    }
-
-    // MARK: - Athlete card
-
-    private var athleteCard: some View {
-        HYFITBorderedCard(padding: 16) {
-            HStack(alignment: .center, spacing: 16) {
-                Text(displayProfile.initials)
-                    .font(HYFITTypography.heading)
-                    .foregroundStyle(HYFITTheme.onLime)
-                    .frame(width: 56, height: 56)
-                    .background(HYFITTheme.lime)
-                    .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadiusSmall, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(displayProfile.displayName)
-                        .font(HYFITTypography.heading)
-                        .foregroundStyle(HYFITTheme.primaryText)
-                        .textCase(.uppercase)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-
-                    Text(displayProfile.category.displayName)
-                        .hyfitLabel(HYFITTheme.lime)
-
-                    Text("TEAM · \(displayProfile.displayPartnerName)")
-                        .font(HYFITTypography.caption)
-                        .foregroundStyle(HYFITTheme.secondaryText)
-                        .textCase(.uppercase)
-
-                    Text(displayProfile.mode.displayName)
-                        .font(HYFITTypography.caption)
-                        .foregroundStyle(HYFITTheme.tertiaryText)
-                        .textCase(.uppercase)
-                }
-
-                Spacer(minLength: 0)
-            }
-        }
+        .frame(maxWidth: .infinity)
     }
 
     private var displayProfile: AthleteProfile {
         isEditing ? draft : profile
     }
 
-    // MARK: - Info (read-only)
+    // MARK: - Avatar
 
-    private var infoSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("PROFILE")
-
-            infoRow(label: "NAME", value: profile.displayName)
-            infoRow(label: "CATEGORY", value: profile.category.displayName)
-            infoRow(label: "TEAM / PARTNER", value: profile.displayPartnerName)
-            infoRow(label: "RACE MODE", value: profile.mode.displayName)
+    @ViewBuilder
+    private var avatar: some View {
+        if let data = displayProfile.avatarData, let image = UIImage(data: data) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 104, height: 104)
+                .clipShape(Circle())
+        } else {
+            Text(displayProfile.initials)
+                .font(HYFITTypography.sora(size: 44, weight: .semibold))
+                .foregroundStyle(HYFITTheme.onLime)
+                .frame(width: 104, height: 104)
+                .background(
+                    LinearGradient(
+                        colors: [HYFITTheme.lime, Color(red: 0.55, green: 0.80, blue: 0.0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    in: Circle()
+                )
         }
+    }
+
+    /// Center-crops to a square and downsizes so the profile stays small in UserDefaults.
+    private static func avatarJPEG(from image: UIImage) -> Data? {
+        let side = min(image.size.width, image.size.height)
+        guard side > 0 else { return nil }
+        let target = CGSize(width: 256, height: 256)
+        let scale = target.width / side
+        let drawSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let rendered = UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(
+                x: (target.width - drawSize.width) / 2,
+                y: (target.height - drawSize.height) / 2,
+                width: drawSize.width,
+                height: drawSize.height
+            ))
+        }
+        return rendered.jpegData(compressionQuality: 0.8)
     }
 
     // MARK: - Edit
 
     private var editSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("EDIT PROFILE")
+            sectionTitle("Edit Profile")
 
-            profileTextField(label: "NAME", text: $draft.athleteName)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("CATEGORY")
-                    .hyfitLabel(HYFITTheme.tertiaryText)
-                Picker("CATEGORY", selection: $draft.category) {
-                    ForEach(RaceCategory.allCases, id: \.self) { category in
-                        Text(category.displayName).tag(category)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+            card {
+                editField(icon: "person.fill", title: "Name", text: $draft.athleteName)
             }
 
-            profileTextField(label: "TEAM / PARTNER", text: $draft.partnerName)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("RACE MODE")
-                    .hyfitLabel(HYFITTheme.tertiaryText)
-                Picker("RACE MODE", selection: $draft.mode) {
-                    ForEach(RaceMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-            }
-        }
-    }
-
-    // MARK: - Distance mode
-
-    private func racePreferencesSection(editable: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("RACE PREFERENCES")
-
-            Text("DISTANCE MODE")
-                .hyfitLabel(HYFITTheme.tertiaryText)
-
-            HStack(spacing: 10) {
-                ForEach(DistanceTrackingMode.allCases, id: \.self) { mode in
-                    distanceModeButton(mode, editable: editable)
-                }
-            }
-
-            Text("Applies to future races. Active races are unchanged.")
-                .font(HYFITTypography.caption)
-                .foregroundStyle(HYFITTheme.tertiaryText)
-        }
-    }
-
-    private func distanceModeButton(_ mode: DistanceTrackingMode, editable: Bool) -> some View {
-        let selected = (isEditing ? draft : profile).distanceTrackingMode == mode
-        return Button {
-            guard editable, isEditing else { return }
-            draft.distanceTrackingMode = mode
-        } label: {
-            Text(mode.displayName)
-                .font(HYFITTypography.heading)
-                .foregroundStyle(selected ? HYFITTheme.onLime : HYFITTheme.primaryText)
-                .textCase(.uppercase)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(selected ? HYFITTheme.lime : HYFITTheme.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
-                        .stroke(
-                            selected ? HYFITTheme.lime : HYFITTheme.border,
-                            lineWidth: HYFITTheme.borderWidth
-                        )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
-                .opacity(editable || selected ? 1 : 0.55)
-        }
-        .buttonStyle(.plain)
-        .disabled(!editable || !isEditing)
-        .accessibilityLabel("Distance mode \(mode.displayName)")
-    }
-
-    // MARK: - Snapshot
-
-    private var performanceSnapshot: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                sectionTitle("PERFORMANCE SNAPSHOT")
-                Spacer()
-                Button(action: onOpenStats) {
-                    Text("VIEW STATS")
-                        .hyfitLabel(HYFITTheme.lime)
+            card {
+                PhotosPicker(selection: $photoItem, matching: .images) {
+                    row(icon: "photo.fill", title: "Change Photo", subtitle: "Choose from your library", showsChevron: true)
                 }
                 .buttonStyle(.plain)
+
+                if draft.avatarData != nil {
+                    divider
+                    Button {
+                        draft.avatarData = nil
+                    } label: {
+                        row(icon: "trash.fill", title: "Remove Photo", subtitle: "Show initials instead")
+                    }
+                    .buttonStyle(.plain)
+                }
             }
+        }
+    }
+
+    // MARK: - Overview
+
+    private var overviewSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Overview")
 
             if summary.isEmpty {
-                HYFITBorderedCard(padding: 16) {
-                    Text("NO RACE DATA YET")
-                        .font(HYFITTypography.bodyEmphasized)
-                        .foregroundStyle(HYFITTheme.secondaryText)
+                card {
+                    row(icon: "flag.checkered", title: "No race data yet", subtitle: "Complete a race to see stats")
                 }
             } else {
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 12),
-                        GridItem(.flexible(), spacing: 12)
-                    ],
-                    spacing: 12
-                ) {
-                    snapshotCell("RACES COMPLETED", "\(summary.raceCount)")
-                    snapshotCell(
-                        "BEST TIME",
-                        summary.bestAdjustedFinishTime.map { TimeFormatting.raceClock($0) } ?? "—"
+                card {
+                    row(icon: "flag.checkered", title: "Races Completed", subtitle: "\(summary.raceCount)")
+                    divider
+                    row(
+                        icon: "stopwatch.fill",
+                        title: "Best Time",
+                        subtitle: summary.bestAdjustedFinishTime.map { TimeFormatting.raceClock($0) } ?? "—"
                     )
-                    snapshotCell(
-                        "BEST 200 M",
-                        summary.personalBests.map { TimeFormatting.paddedRaceClock($0.fastest200m) } ?? "—"
+                }
+                card {
+                    row(
+                        icon: "bolt.fill",
+                        title: "Best 200 M",
+                        subtitle: summary.personalBests.map { TimeFormatting.paddedRaceClock($0.fastest200m) } ?? "—"
                     )
-                    snapshotCell(
-                        "BEST RECALL",
-                        summary.personalBests.map {
+                    divider
+                    row(
+                        icon: "brain.head.profile",
+                        title: "Best Recall",
+                        subtitle: summary.personalBests.map {
                             "\($0.bestRecallCorrect) / \($0.recallSequenceLength)"
                         } ?? "—"
                     )
                 }
             }
-        }
-    }
 
-    // MARK: - Actions
-
-    private var bottomActions: some View {
-        Group {
-            if isEditing {
-                HYFITPrimaryButton(title: "SAVE", action: saveDraft)
-            } else {
-                HYFITPrimaryButton(title: "EDIT PROFILE") {
-                    draft = profile
-                    isEditing = true
+            Button(action: onOpenStats) {
+                card {
+                    row(icon: "chart.bar.fill", title: "View Stats", subtitle: "Full performance history", showsChevron: true)
                 }
             }
+            .buttonStyle(.plain)
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Building blocks
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title)
-            .hyfitLabel(HYFITTheme.lime)
+            .font(HYFITTypography.heading)
+            .foregroundStyle(HYFITTheme.primaryText)
+            .padding(.horizontal, 4)
     }
 
-    private func infoRow(label: String, value: String) -> some View {
-        HYFITBorderedCard(padding: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(label)
-                    .hyfitLabel(HYFITTheme.tertiaryText)
-                Text(value)
-                    .font(HYFITTypography.heading)
+    private var divider: some View {
+        Divider()
+            .overlay(Color.white.opacity(0.08))
+            .padding(.leading, 64)
+    }
+
+    private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            content()
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private func icon(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.system(size: 20, weight: .regular))
+            .foregroundStyle(HYFITTheme.lime)
+            .frame(width: 32)
+    }
+
+    private func row(icon name: String, title: String, subtitle: String, showsChevron: Bool = false) -> some View {
+        HStack(spacing: 16) {
+            icon(name)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(HYFITTypography.sora(size: 16, weight: .semibold))
                     .foregroundStyle(HYFITTheme.primaryText)
-                    .textCase(.uppercase)
-                    .minimumScaleFactor(0.7)
+                Text(subtitle)
+                    .font(HYFITTypography.caption)
+                    .foregroundStyle(HYFITTheme.secondaryText)
                     .lineLimit(2)
             }
+            Spacer(minLength: 8)
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(HYFITTheme.tertiaryText)
+            }
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .contentShape(Rectangle())
     }
 
-    private func profileTextField(label: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(label)
-                .hyfitLabel(HYFITTheme.tertiaryText)
-            TextField("", text: text)
-                .font(HYFITTypography.heading)
-                .foregroundStyle(HYFITTheme.primaryText)
-                .textInputAutocapitalization(.characters)
-                .autocorrectionDisabled()
-                .padding(.horizontal, 16)
-                .padding(.vertical, 16)
-                .background(HYFITTheme.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
-                        .stroke(HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
+    private func editField(icon name: String, title: String, text: Binding<String>) -> some View {
+        HStack(spacing: 16) {
+            icon(name)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(HYFITTypography.caption)
+                    .foregroundStyle(HYFITTheme.secondaryText)
+                TextField(title, text: text)
+                    .font(HYFITTypography.sora(size: 16, weight: .semibold))
+                    .foregroundStyle(HYFITTheme.primaryText)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+            }
         }
-    }
-
-    private func snapshotCell(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(label)
-                .hyfitLabel(HYFITTheme.tertiaryText)
-            Text(value)
-                .font(HYFITTypography.heading)
-                .foregroundStyle(HYFITTheme.primaryText)
-                .monospacedDigit()
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(HYFITTheme.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
-                .stroke(HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
     }
 
     private func reloadProfile() {
@@ -364,7 +332,6 @@ struct ProfileView: View {
         AthleteProfileStore.save(draft)
         profile = AthleteProfileStore.load()
         hasSavedProfile = true
-        isEditing = false
         onProfileSaved(profile)
     }
 }

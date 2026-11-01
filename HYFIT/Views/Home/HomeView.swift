@@ -109,8 +109,6 @@ struct HomeView<Destination: View>: View {
             GeometryReader { geo in
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    branding
-
                     VStack(alignment: .leading, spacing: 14) {
                         Text("RACE SIMULATOR")
                             .hyfitLabel(HYFITTheme.lime)
@@ -144,23 +142,6 @@ struct HomeView<Destination: View>: View {
                 .frame(minHeight: geo.size.height, alignment: .center)
             }
             }
-        }
-    }
-
-    private var branding: some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(HYFITTheme.lime)
-                .frame(width: 18, height: 18)
-            Text("HYFIT")
-                .font(HYFITTypography.heading)
-                .foregroundStyle(HYFITTheme.primaryText)
-                .tracking(2)
-            Text("GAMES")
-                .font(HYFITTypography.heading)
-                .foregroundStyle(HYFITTheme.secondaryText)
-                .tracking(2)
-            Spacer()
         }
     }
 }

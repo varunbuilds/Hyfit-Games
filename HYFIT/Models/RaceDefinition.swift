@@ -5,10 +5,105 @@
 
 import Foundation
 
+/// Top-level race type. Each group owns a set of categories.
+nonisolated enum RaceGroup: String, Codable, Sendable, Hashable, CaseIterable {
+    case individuals = "INDIVIDUALS"
+    case doubles = "DOUBLES"
+    case games2X = "HYFIT GAMES 2X"
+
+    var displayName: String {
+        switch self {
+        case .individuals: "Individuals"
+        case .doubles: "Doubles"
+        case .games2X: "Hyfit Games 2X"
+        }
+    }
+
+    var categories: [RaceCategory] {
+        RaceCategory.allCases.filter { $0.group == self }
+    }
+}
+
 nonisolated enum RaceCategory: String, Codable, Sendable, Hashable, CaseIterable {
+    // Individuals
+    case nextGen8to11 = "NEXTGEN 8-11"
+    case nextGen12to15 = "NEXTGEN 12-15"
+    case grandMasters = "GRAND MASTERS"
+    case openMale = "OPEN MALE"
+    case openFemale = "OPEN FEMALE"
+    case proMale = "PRO MALE"
+    case proFemale = "PRO FEMALE"
+    // Doubles
+    case bloodline = "BLOODLINE"
     case maleDoubles = "MALE DOUBLES"
+    case femaleDoubles = "FEMALE DOUBLES"
+    case mixedDoubles = "MIXED DOUBLES"
+    // Hyfit Games 2X
+    case openMale2X = "OPEN MALE 2X"
+    case openFemale2X = "OPEN FEMALE 2X"
+    case proMale2X = "PRO MALE 2X"
+    case proFemale2X = "PRO FEMALE 2X"
+    case maleDoubles2X = "MALE DOUBLES 2X"
+    case femaleDoubles2X = "FEMALE DOUBLES 2X"
+    case mixedDoubles2X = "MIXED DOUBLES 2X"
 
     var displayName: String { rawValue }
+
+    var group: RaceGroup {
+        switch self {
+        case .nextGen8to11, .nextGen12to15, .grandMasters, .openMale, .openFemale, .proMale, .proFemale:
+            .individuals
+        case .bloodline, .maleDoubles, .femaleDoubles, .mixedDoubles:
+            .doubles
+        case .openMale2X, .openFemale2X, .proMale2X, .proFemale2X,
+             .maleDoubles2X, .femaleDoubles2X, .mixedDoubles2X:
+            .games2X
+        }
+    }
+
+    /// Name shown in the category selector (age is shown separately).
+    var title: String {
+        switch self {
+        case .nextGen8to11, .nextGen12to15: "NextGen"
+        case .grandMasters: "Grand Masters"
+        case .openMale: "Open Male"
+        case .openFemale: "Open Female"
+        case .proMale: "Pro Male"
+        case .proFemale: "Pro Female"
+        case .bloodline: "Bloodline"
+        case .maleDoubles: "Male Doubles"
+        case .femaleDoubles: "Female Doubles"
+        case .mixedDoubles: "Mixed Doubles"
+        case .openMale2X: "Open Male 2X"
+        case .openFemale2X: "Open Female 2X"
+        case .proMale2X: "Pro Male 2X"
+        case .proFemale2X: "Pro Female 2X"
+        case .maleDoubles2X: "Male Doubles 2X"
+        case .femaleDoubles2X: "Female Doubles 2X"
+        case .mixedDoubles2X: "Mixed Doubles 2X"
+        }
+    }
+
+    var ageLabel: String {
+        switch self {
+        case .nextGen8to11: "Ages 8-11"
+        case .nextGen12to15: "Ages 12-15"
+        case .grandMasters: "Ages 55-84"
+        case .bloodline: "Parent + kid, 8-15"
+        default: "Ages 16-84"
+        }
+    }
+
+    /// Categories raced with a partner.
+    var isTeam: Bool {
+        switch self {
+        case .bloodline, .maleDoubles, .femaleDoubles, .mixedDoubles,
+             .maleDoubles2X, .femaleDoubles2X, .mixedDoubles2X:
+            true
+        default:
+            false
+        }
+    }
 }
 
 nonisolated enum RaceMode: String, Codable, Sendable, Hashable, CaseIterable {
