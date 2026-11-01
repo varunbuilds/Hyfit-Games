@@ -38,7 +38,6 @@ struct RaceFormatView: View {
         }
         .navigationTitle("Race Format")
         .navigationBarTitleDisplayMode(.large)
-        .toolbar(.hidden, for: .tabBar)
     }
 }
 

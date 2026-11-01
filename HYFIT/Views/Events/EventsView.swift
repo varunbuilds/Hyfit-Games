@@ -349,7 +349,7 @@ struct EventsView: View {
 
     private func editionPill(_ edition: Int) -> some View {
         let color = edition == 2026 ? HYFITTheme.lime : Color(red: 0.40, green: 0.62, blue: 1.0)
-        return Text("\(edition) EDITION")
+        return Text(verbatim: "\(String(edition)) EDITION")
             .font(HYFITTypography.sora(size: 10, weight: .semibold))
             .tracking(0.5)
             .foregroundStyle(color)

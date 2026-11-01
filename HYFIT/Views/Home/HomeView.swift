@@ -18,6 +18,9 @@ struct HomeView<Destination: View>: View {
     @State private var historyPath = NavigationPath()
     @State private var isShowingProfile = false
 
+    /// Tab bar hides/returns in step with the push/pop so it never "pops in".
+    private static var tabBarAnimation: Animation { .easeInOut(duration: 0.3) }
+
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab(HomeTab.race.title, systemImage: HomeTab.race.systemImage, value: .race) {
@@ -26,6 +29,8 @@ struct HomeView<Destination: View>: View {
                         .hyfitPageHeader(title: HomeTab.race.title, onOpenProfile: openProfile)
                         .navigationDestination(for: RaceRoute.self, destination: destination)
                 }
+                .toolbar(path.isEmpty ? .visible : .hidden, for: .tabBar)
+                .animation(Self.tabBarAnimation, value: path.isEmpty)
             }
 
             Tab(HomeTab.history.title, systemImage: HomeTab.history.systemImage, value: .history) {
@@ -44,6 +49,8 @@ struct HomeView<Destination: View>: View {
                     .hyfitPageHeader(title: HomeTab.history.title, onOpenProfile: openProfile)
                     .navigationDestination(for: RaceRoute.self, destination: destination)
                 }
+                .toolbar(historyPath.isEmpty ? .visible : .hidden, for: .tabBar)
+                .animation(Self.tabBarAnimation, value: historyPath.isEmpty)
             }
 
             Tab(HomeTab.stats.title, systemImage: HomeTab.stats.systemImage, value: .stats) {

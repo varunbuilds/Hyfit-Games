@@ -33,7 +33,8 @@ struct ContentView: View {
             onRefreshResults: refreshHistory,
             onProfileSaved: { profile in
                 // Future Race Setup defaults only — never mutates an active RaceSession.
-                setup = profile.asRaceSetupConfiguration()
+                // Only refresh the athlete name so in-progress setup choices survive.
+                setup.you = TeamMember(id: setup.you.id, role: setup.you.role, name: profile.displayName)
             },
             destination: { route in
                 destination(for: route)

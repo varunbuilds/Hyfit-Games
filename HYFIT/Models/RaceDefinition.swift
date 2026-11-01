@@ -138,7 +138,7 @@ struct RaceDefinition: Identifiable, Codable, Sendable, Hashable {
 nonisolated struct TeamMember: Identifiable, Hashable, Sendable, Codable {
     let id: String
     let role: String
-    let name: String
+    var name: String
 }
 
 nonisolated struct RaceSetupConfiguration: Hashable, Sendable, Codable {

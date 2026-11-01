@@ -29,7 +29,6 @@ struct RaceDetailView: View {
         }
         .navigationTitle("Race Detail")
         .navigationBarTitleDisplayMode(.large)
-        .toolbar(.hidden, for: .tabBar)
     }
 
     private var overallSection: some View {

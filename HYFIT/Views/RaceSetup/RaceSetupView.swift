@@ -19,17 +19,17 @@ struct RaceSetupView: View {
                     raceTypeSection
                     categorySection
                     teamSection
-                    modeField
                     distanceModeSection
                 }
                 .padding(.horizontal, HYFITTheme.horizontalPadding)
                 .padding(.top, 12)
                 .padding(.bottom, 120)
             }
+            .scrollDismissesKeyboard(.interactively)
 
             VStack {
                 Spacer()
-                HYFITPrimaryButton(title: "CONTINUE", action: onContinue)
+                HYFITPrimaryButton(title: "CONTINUE", action: continueTapped)
                     .padding(.horizontal, HYFITTheme.horizontalPadding)
                     .padding(.bottom, 24)
                     .padding(.top, 12)
@@ -38,7 +38,6 @@ struct RaceSetupView: View {
         }
         .navigationTitle("Race Setup")
         .navigationBarTitleDisplayMode(.large)
-        .toolbar(.hidden, for: .tabBar)
         .animation(HYFITTheme.quickSpring, value: configuration.category)
     }
 
@@ -137,30 +136,67 @@ struct RaceSetupView: View {
                 .hyfitLabel(HYFITTheme.tertiaryText)
                 .padding(.leading, 4)
 
-            HYFITFieldRow(
-                label: configuration.you.role,
-                value: configuration.you.name,
-                showsEdit: true
-            )
-
-            if configuration.category.isTeam {
-                HYFITFieldRow(
-                    label: configuration.partner.role,
-                    value: configuration.partner.name,
-                    showsEdit: true
+            VStack(spacing: 8) {
+                nameField(
+                    icon: "person.fill",
+                    label: configuration.you.role.capitalized,
+                    text: $configuration.you.name,
+                    placeholder: "Your name"
                 )
+
+                if configuration.category.isTeam {
+                    nameField(
+                        icon: "person.2.fill",
+                        label: configuration.partner.role.capitalized,
+                        text: $configuration.partner.name,
+                        placeholder: "Partner name"
+                    )
+                }
             }
         }
         .padding(.top, 8)
     }
 
-    private var modeField: some View {
-        HYFITFieldRow(
-            label: "RACE MODE",
-            value: configuration.mode.displayName,
-            showsChevron: true
+    private func nameField(icon: String, label: String, text: Binding<String>, placeholder: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundStyle(HYFITTheme.lime)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label)
+                    .font(HYFITTypography.caption)
+                    .foregroundStyle(HYFITTheme.secondaryText)
+                TextField(placeholder, text: text)
+                    .font(HYFITTypography.sora(size: 16, weight: .semibold))
+                    .foregroundStyle(HYFITTheme.primaryText)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+            }
+
+            Image(systemName: "pencil")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(HYFITTheme.tertiaryText)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(HYFITTheme.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
+                .stroke(HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
         )
-        .padding(.top, 8)
+        .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
+    }
+
+    /// Trims names and falls back to sensible defaults if left empty.
+    private func continueTapped() {
+        let you = configuration.you.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let partner = configuration.partner.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        configuration.you.name = you.isEmpty ? AthleteProfile.default.athleteName : you
+        configuration.partner.name = partner.isEmpty ? AthleteProfile.default.partnerName : partner
+        onContinue()
     }
 
     private var distanceModeSection: some View {
@@ -169,38 +205,58 @@ struct RaceSetupView: View {
                 .hyfitLabel(HYFITTheme.tertiaryText)
                 .padding(.leading, 4)
 
-            HStack(spacing: 10) {
+            VStack(spacing: 8) {
                 ForEach(DistanceTrackingMode.allCases, id: \.self) { mode in
-                    distanceModeButton(mode)
+                    distanceModeRow(mode)
                 }
             }
         }
         .padding(.top, 8)
     }
 
-    private func distanceModeButton(_ mode: DistanceTrackingMode) -> some View {
+    private func distanceModeRow(_ mode: DistanceTrackingMode) -> some View {
         let selected = configuration.distanceTrackingMode == mode
+        let title: String
+        let subtitle: String
+        let icon: String
+        switch mode {
+        case .simulated:
+            title = "Simulator"; subtitle = "Simulated distance, no GPS needed"; icon = "gauge.with.dots.needle.67percent"
+        case .gps:
+            title = "GPS"; subtitle = "Track real distance outdoors"; icon = "location.fill"
+        }
         return Button {
             configuration.distanceTrackingMode = mode
         } label: {
-            Text(mode.displayName)
-                .font(HYFITTypography.heading)
-                .foregroundStyle(selected ? HYFITTheme.onLime : HYFITTheme.primaryText)
-                .textCase(.uppercase)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(selected ? HYFITTheme.lime : HYFITTheme.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
-                        .stroke(
-                            selected ? HYFITTheme.lime : HYFITTheme.border,
-                            lineWidth: HYFITTheme.borderWidth
-                        )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundStyle(HYFITTheme.lime)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(HYFITTypography.sora(size: 16, weight: .semibold))
+                        .foregroundStyle(HYFITTheme.primaryText)
+                    Text(subtitle)
+                        .font(HYFITTypography.caption)
+                        .foregroundStyle(HYFITTheme.secondaryText)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(selected ? HYFITTheme.lime : HYFITTheme.tertiaryText)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(HYFITTheme.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
+                    .stroke(selected ? HYFITTheme.lime : HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Distance mode \(mode.displayName)")
+        .accessibilityLabel("Distance mode \(title)")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
