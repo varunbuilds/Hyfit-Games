@@ -15,86 +15,73 @@ struct StatsView: View {
     }
 
     var body: some View {
-        ZStack {
-            HYFITTheme.background.ignoresSafeArea()
-
-            ScrollView {
-                if summary.isEmpty {
-                    emptyState
-                        .containerRelativeFrame(.vertical)
-                } else {
-                    VStack(alignment: .leading, spacing: 28) {
-                        performanceSection
-                        progressSection
-                        if !summary.runRows.isEmpty {
-                            runPerformanceSection
-                        }
-                        if !summary.stationRows.isEmpty {
-                            stationPerformanceSection
-                        }
-                        if let cognitive = summary.cognitive {
-                            cognitiveSection(cognitive)
-                        }
-                        if let bests = summary.personalBests {
-                            personalBestsSection(bests)
-                        }
+        ScrollView {
+            if summary.isEmpty {
+                HYFITEmptyState(
+                    symbol: "chart.bar.xaxis",
+                    title: "No Race Data Yet",
+                    message: "Complete your first HYFIT race\nto start building your stats.",
+                    actionTitle: "Start Race",
+                    action: onStartRace
+                )
+                .containerRelativeFrame(.vertical)
+            } else {
+                VStack(alignment: .leading, spacing: 28) {
+                    overviewSection
+                    progressSection
+                    if let bests = summary.personalBests {
+                        personalBestsSection(bests)
                     }
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.top, 12)
-                    .padding(.bottom, 32)
+                    if !summary.runRows.isEmpty {
+                        runPerformanceSection
+                    }
+                    if !summary.stationRows.isEmpty {
+                        stationPerformanceSection
+                    }
+                    if let cognitive = summary.cognitive {
+                        cognitiveSection(cognitive)
+                    }
                 }
+                .padding(.horizontal, HYFITTheme.horizontalPadding)
+                .padding(.top, 8)
+                .padding(.bottom, 32)
             }
         }
+        .background(HYFITTheme.background.ignoresSafeArea())
         .onAppear(perform: onRefresh)
     }
 
-    // MARK: - Empty
+    // MARK: - Overview
 
-    private var emptyState: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Text("NO RACE DATA YET")
-                .font(HYFITTypography.heading)
-                .foregroundStyle(HYFITTheme.primaryText)
-            Text("Complete your first HYFIT race\nto start building your stats.")
-                .font(HYFITTypography.body)
-                .foregroundStyle(HYFITTheme.secondaryText)
-                .multilineTextAlignment(.center)
-                .lineSpacing(3)
-            HYFITPrimaryButton(title: "START RACE", action: onStartRace)
-                .padding(.horizontal, HYFITTheme.horizontalPadding)
-                .padding(.top, 8)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Performance
-
-    private var performanceSection: some View {
+    private var overviewSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("PERFORMANCE")
+            HYFITSectionHeader(title: "Overview")
 
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 12),
-                    GridItem(.flexible(), spacing: 12)
-                ],
-                spacing: 12
-            ) {
-                metricCell(
-                    "BEST TIME",
-                    summary.bestAdjustedFinishTime.map { TimeFormatting.raceClock($0) } ?? "—"
-                )
-                metricCell(
-                    "AVERAGE TIME",
-                    summary.averageAdjustedFinishTime.map { TimeFormatting.raceClock($0) } ?? "—"
-                )
-                metricCell("RACES", "\(summary.raceCount)")
-                metricCell(
-                    "DISTANCE",
-                    TimeFormatting.kilometersLabel(summary.totalDistanceMeters)
-                )
+            HYFITGroupCard(padding: 20) {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Best time")
+                            .font(HYFITTypography.caption)
+                            .foregroundStyle(HYFITTheme.secondaryText)
+                        Text(summary.bestAdjustedFinishTime.map { TimeFormatting.raceClock($0) } ?? "—")
+                            .font(HYFITTypography.sora(size: 44, weight: .bold))
+                            .foregroundStyle(HYFITTheme.lime)
+                            .monospacedDigit()
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+                    }
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    HStack(alignment: .top, spacing: 12) {
+                        summaryStat("Races", "\(summary.raceCount)")
+                        summaryStat(
+                            "Average",
+                            summary.averageAdjustedFinishTime.map { TimeFormatting.raceClock($0) } ?? "—"
+                        )
+                        summaryStat("Distance", TimeFormatting.kilometersLabel(summary.totalDistanceMeters))
+                    }
+                }
             }
         }
     }
@@ -103,37 +90,65 @@ struct StatsView: View {
 
     private var progressSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("PROGRESS")
+            HYFITSectionHeader(title: "Progress", subtitle: "Final time per race")
 
-            HYFITBorderedCard(padding: 16) {
+            HYFITGroupCard(padding: 20) {
                 if summary.progressPoints.count == 1, let only = summary.progressPoints.first {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(TimeFormatting.raceClock(only.adjustedFinishTime))
-                            .font(HYFITTypography.metric)
+                            .font(HYFITTypography.sora(size: 34, weight: .bold))
                             .foregroundStyle(HYFITTheme.lime)
                             .monospacedDigit()
-                        Text("FINAL TIME · \(TimeFormatting.historyDate(only.completedAt))")
-                            .hyfitLabel(HYFITTheme.tertiaryText)
-                        Text("Complete more races to see your trend.")
+                        Text(TimeFormatting.historyDate(only.completedAt))
                             .font(HYFITTypography.caption)
                             .foregroundStyle(HYFITTheme.secondaryText)
-                            .padding(.top, 4)
+                        Text("Complete more races to see your trend.")
+                            .font(HYFITTypography.caption)
+                            .foregroundStyle(HYFITTheme.tertiaryText)
+                            .padding(.top, 6)
                     }
                 } else if summary.progressPoints.count > 1 {
                     VStack(alignment: .leading, spacing: 12) {
                         StatsProgressChart(points: summary.progressPoints)
-                            .frame(height: 140)
+                            .frame(height: 150)
 
                         HStack {
                             Text(TimeFormatting.historyDate(summary.progressPoints.first!.completedAt))
-                                .hyfitLabel(HYFITTheme.tertiaryText)
                             Spacer()
-                            Text("NEWEST")
-                                .hyfitLabel(HYFITTheme.lime)
                             Text(TimeFormatting.historyDate(summary.progressPoints.last!.completedAt))
-                                .hyfitLabel(HYFITTheme.tertiaryText)
                         }
+                        .font(HYFITTypography.caption)
+                        .foregroundStyle(HYFITTheme.secondaryText)
                     }
+                }
+            }
+        }
+    }
+
+    // MARK: - Personal bests
+
+    private func personalBestsSection(_ bests: StatsPersonalBests) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HYFITSectionHeader(title: "Personal Bests")
+
+            HYFITGroupCard {
+                VStack(spacing: 0) {
+                    bestRow(icon: "trophy.fill", "Final time", TimeFormatting.raceClock(bests.finalTime))
+                    HYFITCardDivider(inset: 68)
+                    bestRow(icon: "bolt.fill", "Fastest 200 m", TimeFormatting.paddedRaceClock(bests.fastest200m))
+                    HYFITCardDivider(inset: 68)
+                    bestRow(
+                        icon: "stopwatch.fill",
+                        "Fastest station",
+                        TimeFormatting.paddedRaceClock(bests.fastestStationDuration),
+                        detail: bests.fastestStationName.capitalized
+                    )
+                    HYFITCardDivider(inset: 68)
+                    bestRow(
+                        icon: "brain.head.profile",
+                        "Best recall",
+                        "\(bests.bestRecallCorrect) / \(bests.recallSequenceLength)"
+                    )
                 }
             }
         }
@@ -143,23 +158,18 @@ struct StatsView: View {
 
     private var runPerformanceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("RUN PERFORMANCE")
+            HYFITSectionHeader(title: "Runs", subtitle: "Best and average per 200 m run")
 
-            HYFITBorderedCard(padding: 14) {
-                VStack(spacing: 12) {
+            HYFITGroupCard {
+                VStack(spacing: 0) {
+                    columnHeader()
                     ForEach(summary.runRows) { row in
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text("RUN \(String(format: "%02d", row.runNumber))")
-                                .font(HYFITTypography.bodyEmphasized)
-                                .foregroundStyle(HYFITTheme.primaryText)
-                                .frame(width: 72, alignment: .leading)
-
-                            Spacer(minLength: 8)
-
-                            compactStat("BEST", TimeFormatting.paddedRaceClock(row.best))
-                            compactStat("AVG", TimeFormatting.paddedRaceClock(row.average))
-                                .frame(minWidth: 88, alignment: .trailing)
-                        }
+                        HYFITCardDivider()
+                        tableRow(
+                            title: "Run \(String(format: "%02d", row.runNumber))",
+                            best: TimeFormatting.paddedRaceClock(row.best),
+                            average: TimeFormatting.paddedRaceClock(row.average)
+                        )
                     }
                 }
             }
@@ -170,24 +180,18 @@ struct StatsView: View {
 
     private var stationPerformanceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("STATION PERFORMANCE")
+            HYFITSectionHeader(title: "Stations", subtitle: "Best and average per station")
 
-            VStack(spacing: 10) {
-                ForEach(summary.stationRows) { row in
-                    HYFITBorderedCard(padding: 14) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("\(String(format: "%02d", row.stationNumber))  \(row.name)")
-                                .font(HYFITTypography.bodyEmphasized)
-                                .foregroundStyle(HYFITTheme.primaryText)
-                                .textCase(.uppercase)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            HStack {
-                                compactStat("BEST", TimeFormatting.paddedRaceClock(row.best))
-                                Spacer()
-                                compactStat("AVG", TimeFormatting.paddedRaceClock(row.average))
-                            }
-                        }
+            HYFITGroupCard {
+                VStack(spacing: 0) {
+                    columnHeader()
+                    ForEach(summary.stationRows) { row in
+                        HYFITCardDivider()
+                        tableRow(
+                            title: "\(String(format: "%02d", row.stationNumber))  \(row.name.capitalized)",
+                            best: TimeFormatting.paddedRaceClock(row.best),
+                            average: TimeFormatting.paddedRaceClock(row.average)
+                        )
                     }
                 }
             }
@@ -198,111 +202,118 @@ struct StatsView: View {
 
     private func cognitiveSection(_ cognitive: StatsCognitiveSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("COGNITIVE")
+            HYFITSectionHeader(title: "Cognitive", subtitle: "Recall accuracy under fatigue")
 
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 12),
-                    GridItem(.flexible(), spacing: 12)
-                ],
-                spacing: 12
-            ) {
-                metricCell(
-                    "AVERAGE RECALL",
-                    String(format: "%.1f / %d", cognitive.averageRecall, cognitive.recallSequenceLength)
-                )
-                metricCell(
-                    "BEST RECALL",
-                    "\(cognitive.bestRecall) / \(cognitive.recallSequenceLength)"
-                )
-                metricCell(
-                    "AVERAGE PENALTY",
-                    TimeFormatting.signedPenaltyClock(cognitive.averagePenaltySeconds)
-                )
-                metricCell("PERFECT RECALLS", "\(cognitive.perfectRecallCount)")
-            }
-        }
-    }
-
-    // MARK: - Personal bests
-
-    private func personalBestsSection(_ bests: StatsPersonalBests) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("PERSONAL BESTS")
-
-            HYFITBorderedCard(padding: 16) {
-                VStack(spacing: 12) {
-                    personalBestRow("FINAL TIME", TimeFormatting.raceClock(bests.finalTime))
-                    personalBestRow("FASTEST 200 M", TimeFormatting.paddedRaceClock(bests.fastest200m))
-                    VStack(alignment: .leading, spacing: 4) {
-                        personalBestRow(
-                            "FASTEST STATION",
-                            TimeFormatting.paddedRaceClock(bests.fastestStationDuration)
-                        )
-                        Text(bests.fastestStationName)
-                            .hyfitLabel(HYFITTheme.tertiaryText)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                    }
-                    personalBestRow(
-                        "BEST RECALL",
-                        "\(bests.bestRecallCorrect) / \(bests.recallSequenceLength)"
+            HYFITGroupCard {
+                VStack(spacing: 0) {
+                    valueRow(
+                        "Average recall",
+                        String(format: "%.1f / %d", cognitive.averageRecall, cognitive.recallSequenceLength)
                     )
+                    HYFITCardDivider()
+                    valueRow("Best recall", "\(cognitive.bestRecall) / \(cognitive.recallSequenceLength)")
+                    HYFITCardDivider()
+                    valueRow("Average penalty", TimeFormatting.signedPenaltyClock(cognitive.averagePenaltySeconds))
+                    HYFITCardDivider()
+                    valueRow("Perfect recalls", "\(cognitive.perfectRecallCount)")
                 }
             }
         }
     }
 
-    // MARK: - Shared chrome
+    // MARK: - Building blocks
 
-    private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .hyfitLabel(HYFITTheme.lime)
-    }
-
-    private func metricCell(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private func summaryStat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .hyfitLabel(HYFITTheme.tertiaryText)
+                .font(HYFITTypography.caption)
+                .foregroundStyle(HYFITTheme.secondaryText)
             Text(value)
-                .font(HYFITTypography.heading)
+                .font(HYFITTypography.sora(size: 17, weight: .semibold))
                 .foregroundStyle(HYFITTheme.primaryText)
                 .monospacedDigit()
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(HYFITTheme.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous)
-                .stroke(HYFITTheme.border, lineWidth: HYFITTheme.borderWidth)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: HYFITTheme.cornerRadius, style: .continuous))
     }
 
-    private func compactStat(_ label: String, _ value: String) -> some View {
-        HStack(spacing: 6) {
+    private func valueRow(_ label: String, _ value: String) -> some View {
+        HStack {
             Text(label)
-                .hyfitLabel(HYFITTheme.tertiaryText)
-            Text(value)
-                .font(HYFITTypography.bodyEmphasized)
-                .foregroundStyle(HYFITTheme.primaryText)
-                .monospacedDigit()
-        }
-    }
-
-    private func personalBestRow(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label)
-                .hyfitLabel(HYFITTheme.tertiaryText)
+                .font(HYFITTypography.body)
+                .foregroundStyle(HYFITTheme.secondaryText)
             Spacer(minLength: 12)
             Text(value)
-                .font(HYFITTypography.heading)
+                .font(HYFITTypography.sora(size: 16, weight: .semibold))
+                .foregroundStyle(HYFITTheme.primaryText)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+
+    private func bestRow(icon: String, _ label: String, _ value: String, detail: String? = nil) -> some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundStyle(HYFITTheme.lime)
+                .frame(width: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(HYFITTypography.sora(size: 16, weight: .semibold))
+                    .foregroundStyle(HYFITTheme.primaryText)
+                if let detail {
+                    Text(detail)
+                        .font(HYFITTypography.caption)
+                        .foregroundStyle(HYFITTheme.secondaryText)
+                }
+            }
+            Spacer(minLength: 8)
+            Text(value)
+                .font(HYFITTypography.sora(size: 16, weight: .semibold))
                 .foregroundStyle(HYFITTheme.lime)
                 .monospacedDigit()
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+
+    private func columnHeader() -> some View {
+        HStack(spacing: 8) {
+            Spacer()
+            Text("Best")
+                .frame(width: 72, alignment: .trailing)
+            Text("Average")
+                .frame(width: 72, alignment: .trailing)
+        }
+        .font(HYFITTypography.caption)
+        .foregroundStyle(HYFITTheme.secondaryText)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+    }
+
+    private func tableRow(title: String, best: String, average: String) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(HYFITTypography.sora(size: 14, weight: .semibold))
+                .foregroundStyle(HYFITTheme.primaryText)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            Text(best)
+                .font(HYFITTypography.sora(size: 13, weight: .semibold))
+                .foregroundStyle(HYFITTheme.lime)
+                .monospacedDigit()
+                .frame(width: 72, alignment: .trailing)
+            Text(average)
+                .font(HYFITTypography.sora(size: 13, weight: .regular))
+                .foregroundStyle(HYFITTheme.secondaryText)
+                .monospacedDigit()
+                .frame(width: 72, alignment: .trailing)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
     }
 }
 

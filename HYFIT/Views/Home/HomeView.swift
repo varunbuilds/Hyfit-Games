@@ -100,18 +100,18 @@ struct HomeView<Destination: View>: View {
         isShowingProfile = true
     }
 
-    private var raceLanding: some View {
-        ZStack {
-            AthleticBackdrop()
-                .ignoresSafeArea()
-                .opacity(0.55)
+    private var latestResult: RaceResult? {
+        historyResults.max(by: { $0.completedAt < $1.completedAt })
+    }
 
-            GeometryReader { geo in
+    private var raceLanding: some View {
+        GeometryReader { geo in
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 32) {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("RACE SIMULATOR")
-                            .hyfitLabel(HYFITTheme.lime)
+                        Text("Race Simulator")
+                            .font(HYFITTypography.sora(size: 14, weight: .semibold))
+                            .foregroundStyle(HYFITTheme.lime)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text("RUN.")
@@ -132,8 +132,13 @@ struct HomeView<Destination: View>: View {
                             .padding(.top, 4)
                     }
 
-                    HYFITPrimaryButton(title: "START RACE →", action: onStartRace)
-                        .padding(.top, 8)
+                    VStack(alignment: .leading, spacing: 16) {
+                        HYFITPrimaryButton(title: "START RACE →", action: onStartRace)
+
+                        if let latest = latestResult {
+                            latestRaceCard(latest)
+                        }
+                    }
                 }
                 .padding(.horizontal, HYFITTheme.horizontalPadding)
                 .padding(.top, 20)
@@ -141,34 +146,47 @@ struct HomeView<Destination: View>: View {
                 // Vertically center the landing content in the visible area.
                 .frame(minHeight: geo.size.height, alignment: .center)
             }
-            }
         }
+        .background(HYFITTheme.background.ignoresSafeArea())
     }
-}
 
-/// Subtle editorial backdrop — black field with lime accent geometry.
-private struct AthleticBackdrop: View {
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .topTrailing) {
-                HYFITTheme.background
+    private func latestRaceCard(_ result: RaceResult) -> some View {
+        Button {
+            onSelectHistoryResult(result)
+            selectedTab = .history
+            historyPath.append(RaceRoute.raceDetail(result.id))
+        } label: {
+            HYFITGroupCard(padding: 20) {
+                HStack(spacing: 16) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 20))
+                        .foregroundStyle(HYFITTheme.lime)
+                        .frame(width: 32)
 
-                ForEach(0..<6, id: \.self) { index in
-                    Rectangle()
-                        .fill(Color.white.opacity(index.isMultiple(of: 2) ? 0.03 : 0.015))
-                        .frame(width: geo.size.width * 0.18)
-                        .offset(x: CGFloat(index) * geo.size.width * 0.16 - geo.size.width * 0.1)
-                        .rotationEffect(.degrees(-18))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Last race")
+                            .font(HYFITTypography.sora(size: 16, weight: .semibold))
+                            .foregroundStyle(HYFITTheme.primaryText)
+                        Text("\(result.category.title) · \(TimeFormatting.historyDate(result.completedAt))")
+                            .font(HYFITTypography.caption)
+                            .foregroundStyle(HYFITTheme.secondaryText)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Text(TimeFormatting.raceClock(result.adjustedFinishTime))
+                        .font(HYFITTypography.sora(size: 16, weight: .semibold))
+                        .foregroundStyle(HYFITTheme.lime)
+                        .monospacedDigit()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(HYFITTheme.tertiaryText)
                 }
-
-                Circle()
-                    .fill(HYFITTheme.lime.opacity(0.06))
-                    .frame(width: geo.size.width * 0.9, height: geo.size.width * 0.9)
-                    .blur(radius: 60)
-                    .offset(x: geo.size.width * 0.25, y: -geo.size.height * 0.05)
             }
-            .clipped()
         }
+        .buttonStyle(HYFITPressableStyle())
     }
 }
 

@@ -103,6 +103,99 @@ private struct SeededGenerator: RandomNumberGenerator {
     }
 }
 
+// MARK: - Grouped card components (shared by History / Stats)
+
+/// Large section heading used above grouped cards.
+struct HYFITSectionHeader: View {
+    let title: String
+    var subtitle: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(HYFITTypography.heading)
+                .foregroundStyle(HYFITTheme.primaryText)
+            if let subtitle {
+                Text(subtitle)
+                    .font(HYFITTypography.caption)
+                    .foregroundStyle(HYFITTheme.secondaryText)
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+}
+
+/// Rounded translucent container, matching the Profile cards.
+struct HYFITGroupCard<Content: View>: View {
+    var padding: CGFloat = 0
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        content()
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+}
+
+struct HYFITCardDivider: View {
+    var inset: CGFloat = 20
+
+    var body: some View {
+        Divider()
+            .overlay(Color.white.opacity(0.08))
+            .padding(.leading, inset)
+    }
+}
+
+/// Native-style empty state: symbol, title, explanation and an optional action.
+struct HYFITEmptyState: View {
+    let symbol: String
+    let title: String
+    let message: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 44, weight: .regular))
+                .foregroundStyle(HYFITTheme.lime)
+                .padding(.bottom, 4)
+            Text(title)
+                .font(HYFITTypography.heading)
+                .foregroundStyle(HYFITTheme.primaryText)
+            Text(message)
+                .font(HYFITTypography.body)
+                .foregroundStyle(HYFITTheme.secondaryText)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+            if let actionTitle, let action {
+                Button(action: action) {
+                    Text(actionTitle)
+                        .font(HYFITTypography.sora(size: 15, weight: .semibold))
+                        .foregroundStyle(HYFITTheme.onLime)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(HYFITTheme.lime, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 8)
+            }
+        }
+        .padding(.horizontal, 32)
+        .frame(maxWidth: .infinity)
+    }
+}
+
 struct HYFITFloatingBarBackground: View {
     var body: some View {
         RoundedRectangle(cornerRadius: HYFITTheme.cornerRadiusLarge, style: .continuous)

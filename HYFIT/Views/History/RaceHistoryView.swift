@@ -10,92 +10,137 @@ struct RaceHistoryView: View {
     let onSelect: (RaceResult) -> Void
     let onStartRace: () -> Void
 
-    var body: some View {
-        ZStack {
-            HYFITTheme.background.ignoresSafeArea()
-
-            ScrollView {
-                if results.isEmpty {
-                    emptyState
-                        .containerRelativeFrame(.vertical)
-                } else {
-                    LazyVStack(spacing: 14) {
-                        ForEach(results) { result in
-                            Button {
-                                onSelect(result)
-                            } label: {
-                                RaceHistoryCard(result: result)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, HYFITTheme.horizontalPadding)
-                    .padding(.top, 12)
-                    .padding(.bottom, 24)
-                }
-            }
-        }
+    private struct MonthGroup: Identifiable {
+        let title: String
+        let results: [RaceResult]
+        var id: String { title }
     }
 
-    private var emptyState: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Text("NO RACES YET")
-                .font(HYFITTypography.heading)
-                .foregroundStyle(HYFITTheme.primaryText)
-            Text("Complete your first HYFIT race\nto see your results here.")
-                .font(HYFITTypography.body)
-                .foregroundStyle(HYFITTheme.secondaryText)
-                .multilineTextAlignment(.center)
-                .lineSpacing(3)
-            HYFITPrimaryButton(title: "START RACE →", action: onStartRace)
+    private static let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter
+    }()
+
+    /// Newest first, grouped by month while preserving order.
+    private var groups: [MonthGroup] {
+        let sorted = results.sorted { $0.completedAt > $1.completedAt }
+        var order: [String] = []
+        var buckets: [String: [RaceResult]] = [:]
+        for result in sorted {
+            let key = Self.monthFormatter.string(from: result.completedAt)
+            if buckets[key] == nil { order.append(key) }
+            buckets[key, default: []].append(result)
+        }
+        return order.map { MonthGroup(title: $0, results: buckets[$0] ?? []) }
+    }
+
+    var body: some View {
+        ScrollView {
+            if results.isEmpty {
+                HYFITEmptyState(
+                    symbol: "clock.arrow.circlepath",
+                    title: "No Races Yet",
+                    message: "Complete your first HYFIT race\nto see your results here.",
+                    actionTitle: "Start Race",
+                    action: onStartRace
+                )
+                .containerRelativeFrame(.vertical)
+            } else {
+                LazyVStack(alignment: .leading, spacing: 28) {
+                    ForEach(groups) { group in
+                        VStack(alignment: .leading, spacing: 12) {
+                            HYFITSectionHeader(
+                                title: group.title,
+                                subtitle: group.results.count == 1 ? "1 race" : "\(group.results.count) races"
+                            )
+                            VStack(spacing: 12) {
+                                ForEach(group.results) { result in
+                                    Button {
+                                        onSelect(result)
+                                    } label: {
+                                        RaceHistoryCard(result: result)
+                                    }
+                                    .buttonStyle(HYFITPressableStyle())
+                                }
+                            }
+                        }
+                    }
+                }
                 .padding(.horizontal, HYFITTheme.horizontalPadding)
                 .padding(.top, 8)
-            Spacer()
+                .padding(.bottom, 32)
+            }
         }
-        .frame(maxWidth: .infinity)
+        .background(HYFITTheme.background.ignoresSafeArea())
     }
 }
 
 private struct RaceHistoryCard: View {
     let result: RaceResult
 
-    var body: some View {
-        HYFITBorderedCard(padding: 16) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(TimeFormatting.historyDate(result.completedAt))
-                    .hyfitLabel(HYFITTheme.lime)
+    private var penaltyColor: Color {
+        if result.penaltySeconds > 0 { return HYFITTheme.danger }
+        if result.penaltySeconds < 0 { return HYFITTheme.lime }
+        return HYFITTheme.secondaryText
+    }
 
-                VStack(alignment: .leading, spacing: 4) {
+    var body: some View {
+        HYFITGroupCard(padding: 20) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(result.category.title)
+                            .font(HYFITTypography.sora(size: 16, weight: .semibold))
+                            .foregroundStyle(HYFITTheme.primaryText)
+                        Text(TimeFormatting.historyDate(result.completedAt))
+                            .font(HYFITTypography.caption)
+                            .foregroundStyle(HYFITTheme.secondaryText)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(HYFITTheme.tertiaryText)
+                        .padding(.top, 4)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
                     Text(TimeFormatting.raceClock(result.adjustedFinishTime))
-                        .font(HYFITTypography.metric)
-                        .foregroundStyle(HYFITTheme.primaryText)
+                        .font(HYFITTypography.sora(size: 40, weight: .bold))
+                        .foregroundStyle(HYFITTheme.lime)
                         .monospacedDigit()
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
-                    Text("FINAL TIME")
-                        .hyfitLabel(HYFITTheme.tertiaryText)
+                    Text("Final time")
+                        .font(HYFITTypography.caption)
+                        .foregroundStyle(HYFITTheme.secondaryText)
                 }
 
-                VStack(spacing: 8) {
-                    historyRow("RAW TIME", TimeFormatting.paddedRaceClock(result.rawFinishTime))
-                    historyRow("PENALTY", TimeFormatting.signedPenaltyClock(result.penaltySeconds))
-                    historyRow("RECALL", "\(result.correctPositions) / 10")
+                Divider().overlay(Color.white.opacity(0.08))
+
+                HStack(alignment: .top, spacing: 12) {
+                    stat("Raw time", TimeFormatting.paddedRaceClock(result.rawFinishTime))
+                    stat("Penalty", TimeFormatting.signedPenaltyClock(result.penaltySeconds), color: penaltyColor)
+                    stat("Recall", "\(result.correctPositions) / 10")
                 }
             }
         }
     }
 
-    private func historyRow(_ label: String, _ value: String) -> some View {
-        HStack {
+    private func stat(_ label: String, _ value: String, color: Color = HYFITTheme.primaryText) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .hyfitLabel(HYFITTheme.tertiaryText)
-            Spacer()
+                .font(HYFITTypography.caption)
+                .foregroundStyle(HYFITTheme.secondaryText)
             Text(value)
-                .font(HYFITTypography.bodyEmphasized)
-                .foregroundStyle(HYFITTheme.primaryText)
+                .font(HYFITTypography.sora(size: 15, weight: .semibold))
+                .foregroundStyle(color)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
